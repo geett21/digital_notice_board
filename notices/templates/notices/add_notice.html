@@ -1,0 +1,39 @@
+
+{% extends 'notices/base.html' %}
+
+{% block title %}{{ page_title }} | CampusBoard{% endblock %}
+
+{% block content %}
+<section class="container section-space form-page">
+    <a class="back-link" href="{% url 'admin_dashboard' %}"><i class="bi bi-arrow-left me-1"></i>Back to dashboard</a>
+    <div class="form-card mt-3">
+        <span class="eyebrow text-primary">NOTICE MANAGEMENT</span>
+        <h1 class="h2 mt-1">{{ page_title }}</h1>
+        <p class="text-secondary mb-4">Share a clear, up-to-date announcement with students.</p>
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+            {% for field in form %}
+                {% if field.name == 'is_important' or field.name == 'is_published' %}
+                    <div class="form-check form-switch mb-3">
+                        {{ field }}
+                        <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                {% else %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <div class="d-flex flex-wrap gap-2 pt-2">
+                <button class="btn btn-primary px-4" type="submit"><i class="bi bi-check2 me-1"></i>Save notice</button>
+                <a class="btn btn-outline-secondary px-4" href="{% url 'admin_dashboard' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

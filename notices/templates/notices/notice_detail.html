@@ -1,0 +1,25 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}{{ notice.title }} | CampusBoard{% endblock %}
+
+{% block content %}
+<section class="container section-space detail-wrap">
+    <a class="back-link" href="{% url 'notice_list' %}"><i class="bi bi-arrow-left me-1"></i>Back to all notices</a>
+    <article class="detail-card">
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+            <span class="category-pill">{{ notice.category }}</span>
+            {% if notice.is_important %}<span class="important-pill"><i class="bi bi-star-fill me-1"></i>Important announcement</span>{% endif %}
+        </div>
+        <h1>{{ notice.title }}</h1>
+        <div class="detail-meta">
+            <span><i class="bi bi-calendar3 me-2"></i>Published {{ notice.created_at|date:"d F Y" }}</span>
+            {% if notice.expiry_date %}<span><i class="bi bi-hourglass-split me-2"></i>Expires {{ notice.expiry_date|date:"d F Y" }}</span>{% endif %}
+        </div>
+        <hr>
+        <div class="detail-description">{{ notice.description|linebreaks }}</div>
+        {% if notice.pdf_file %}
+            <a class="btn btn-primary mt-3" href="{% url 'download_notice_pdf' notice.pk %}"><i class="bi bi-file-earmark-arrow-down me-2"></i>Download attached PDF</a>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}About the notice board{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div class="container">
+        <span class="eyebrow text-primary">ABOUT THIS PLATFORM</span>
+        <h1>College updates, made easier to find.</h1>
+        <p>One reliable place for students and staff to keep up with campus announcements.</p>
+    </div>
+</section>
+<section class="container section-space">
+    <div class="row g-4 align-items-stretch">
+        <div class="col-lg-7">
+            <article class="info-card h-100">
+                <span class="category-icon mb-3"><i class="bi bi-mortarboard"></i></span>
+                <h2 class="h3">About the College Digital Notice Board</h2>
+                <p>This notice board helps the college community find current announcements without searching through multiple channels. Students can browse published notices, search by keyword or category, read full details and download attached PDFs.</p>
+                <p class="mb-0">Authorized college staff manage notices through a secure dashboard. Notices can be marked important, scheduled to expire, and published or kept as drafts.</p>
+            </article>
+        </div>
+        <div class="col-lg-5">
+            <article class="info-card h-100">
+                <span class="eyebrow text-primary">WHAT YOU CAN FIND</span>
+                <ul class="feature-list mt-3">
+                    <li><i class="bi bi-check-circle-fill"></i>Examination and result updates</li>
+                    <li><i class="bi bi-check-circle-fill"></i>Events, sports and placement news</li>
+                    <li><i class="bi bi-check-circle-fill"></i>Admissions and scholarship notices</li>
+                    <li><i class="bi bi-check-circle-fill"></i>Holidays, timetables and general updates</li>
+                </ul>
+                <a class="btn btn-primary mt-3" href="{% url 'notice_list' %}">Browse the notice board</a>
+            </article>
+        </div>
+    </div>
+</section>
+{% endblock %}

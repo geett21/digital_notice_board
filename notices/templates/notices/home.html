@@ -1,0 +1,112 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}Home | CampusBoard{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="container hero-content">
+        <div class="hero-copy">
+            <span class="eyebrow"><i class="bi bi-broadcast-pin me-2"></i>WELCOME TO YOUR CAMPUS NOTICE BOARD</span>
+            <h1>Every important update.<br><span>All in one place.</span></h1>
+            <p>Find the latest examination schedules, campus events, holiday announcements and more.</p>
+            <form class="hero-search" method="get" action="{% url 'notice_list' %}">
+                <i class="bi bi-search"></i>
+                <input type="search" name="q" placeholder="Search college notices..." aria-label="Search college notices">
+                <button class="btn btn-primary" type="submit">Search notices</button>
+            </form>
+            <a class="hero-browse" href="{% url 'notice_list' %}">View all notices <i class="bi bi-arrow-up-right ms-1"></i></a>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+            <div class="hero-orbit orbit-one"></div>
+            <div class="hero-orbit orbit-two"></div>
+            <div class="hero-board">
+                <span class="board-top"><i class="bi bi-megaphone-fill"></i> CAMPUS UPDATE</span>
+                <span class="board-line line-long"></span>
+                <span class="board-line line-short"></span>
+                <span class="board-date"><i class="bi bi-calendar-check"></i> Always up to date</span>
+            </div>
+            <span class="floating-icon icon-calendar"><i class="bi bi-calendar-event"></i></span>
+            <span class="floating-icon icon-star"><i class="bi bi-stars"></i></span>
+        </div>
+    </div>
+</section>
+
+<section class="container stat-strip" aria-label="Notice board summary">
+    <div><span class="stat-number">{{ notice_count }}</span><span class="stat-label">current notices</span></div>
+    <div><span class="stat-number">{{ categories|length }}</span><span class="stat-label">notice categories</span></div>
+    <div><span class="stat-number"><i class="bi bi-clock-history"></i></span><span class="stat-label">updated for campus</span></div>
+</section>
+
+<section class="container portal-choices" aria-label="Choose a portal">
+    <a class="portal-choice student-portal" href="{% url 'notice_list' %}">
+        <span class="portal-icon"><i class="bi bi-mortarboard-fill"></i></span>
+        <span class="portal-copy">
+            <span class="eyebrow text-primary">FOR STUDENTS & VISITORS</span>
+            <strong>Student / User Portal</strong>
+            <span>Browse, search and download college notices. No login required.</span>
+        </span>
+        <i class="bi bi-arrow-up-right portal-arrow"></i>
+    </a>
+    <a class="portal-choice admin-portal" href="{% url 'admin_login' %}">
+        <span class="portal-icon"><i class="bi bi-shield-lock-fill"></i></span>
+        <span class="portal-copy">
+            <span class="eyebrow">FOR COLLEGE STAFF</span>
+            <strong>Admin Login</strong>
+            <span>Sign in securely to publish and manage notices.</span>
+        </span>
+        <i class="bi bi-arrow-up-right portal-arrow"></i>
+    </a>
+</section>
+
+<section class="section-space container">
+    <div class="section-heading">
+        <div><span class="eyebrow text-primary">FRESH FROM CAMPUS</span><h2>Latest notices</h2></div>
+        <a class="text-link" href="{% url 'notice_list' %}">See all <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row g-4">
+        {% for notice in latest_notices %}
+            <div class="col-md-6 col-lg-4">
+                {% include 'notices/_notice_card.html' %}
+            </div>
+        {% empty %}
+            <div class="col-12"><div class="empty-state"><i class="bi bi-inbox"></i><h3>No notices just yet</h3><p>New campus announcements will appear here.</p></div></div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="section-space container">
+    <div class="section-heading">
+        <div><span class="eyebrow text-primary">FIND WHAT YOU NEED</span><h2>Explore by category</h2></div>
+        <a class="text-link" href="{% url 'notice_list' %}">View all notices <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="row g-3">
+        {% for value, label in categories %}
+            <div class="col-6 col-md-4 col-lg-2">
+                <a class="category-card" href="{% url 'notice_list' %}?category={{ value|urlencode }}">
+                    <span class="category-icon"><i class="bi bi-folder2-open"></i></span>
+                    <span class="category-name">{{ label }}</span>
+                    <i class="bi bi-arrow-up-right category-arrow"></i>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% if important_notices %}
+<section class="important-section">
+    <div class="container">
+        <div class="section-heading">
+            <div><span class="eyebrow text-warning">PLEASE TAKE NOTE</span><h2>Important announcements</h2></div>
+        </div>
+        <div class="row g-3">
+            {% for notice in important_notices %}
+                <div class="col-md-4">
+                    {% include 'notices/_notice_card.html' %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{% endblock %}

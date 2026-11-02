@@ -1,0 +1,52 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}Notices | CampusBoard{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div class="container">
+        <span class="eyebrow text-primary">CAMPUS UPDATES</span>
+        <h1>Notice board</h1>
+        <p>Search announcements or narrow down by category.</p>
+    </div>
+</section>
+<section class="container section-space">
+    <form method="get" class="filter-panel row g-3 align-items-end mb-4">
+        <div class="col-md-6">
+            <label class="form-label" for="notice-search">Search notices</label>
+            <input id="notice-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Search title or description">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="notice-category">Category</label>
+            <select id="notice-category" class="form-select" name="category">
+                <option value="">All categories</option>
+                {% for value, label in categories %}
+                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button>
+        </div>
+    </form>
+    {% if search_query or selected_category %}
+        <p class="results-label">Results matching your filters</p>
+    {% endif %}
+    <div class="row g-4">
+        {% for notice in notices %}
+            <div class="col-md-6 col-lg-4">
+                {% include 'notices/_notice_card.html' %}
+            </div>
+        {% empty %}
+            <div class="col-12">
+                <div class="empty-state">
+                    <i class="bi bi-search"></i>
+                    <h2>No matching notices</h2>
+                    <p>Try a different search or category.</p>
+                    <a class="btn btn-outline-primary" href="{% url 'notice_list' %}">Clear filters</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}Contact the college{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div class="container">
+        <span class="eyebrow text-primary">WE'RE HERE TO HELP</span>
+        <h1>Contact us</h1>
+        <p>Send a question or feedback to the college notice board team.</p>
+    </div>
+</section>
+<section class="container section-space">
+    <div class="row g-4 justify-content-center">
+        <div class="col-lg-5">
+            <article class="info-card h-100">
+                <span class="category-icon mb-3"><i class="bi bi-chat-dots"></i></span>
+                <h2 class="h4">Get in touch</h2>
+                <p class="text-secondary">Use this form for questions about announcements, notice attachments or information on this board. Include an email address so the college team can reply.</p>
+                <div class="contact-note"><i class="bi bi-shield-check me-2"></i>Your message is only available to authorized staff.</div>
+                <a class="text-link d-inline-block mt-4" href="{% url 'notice_list' %}">Return to notices <i class="bi bi-arrow-right"></i></a>
+            </article>
+        </div>
+        <div class="col-lg-7">
+            <div class="form-card">
+                <h2 class="h4 mb-4">Send a message</h2>
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                        </div>
+                    {% endfor %}
+                    <button class="btn btn-primary px-4" type="submit"><i class="bi bi-send me-2"></i>Send message</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
