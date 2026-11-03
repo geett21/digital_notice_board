@@ -112,7 +112,40 @@ a { text-decoration: none; }
 .detail-description { color: #334860; font-size: 1.03rem; line-height: 1.85; }
 .login-section { display: grid; min-height: 72vh; place-items: center; padding: 3rem 1rem; background: radial-gradient(circle at 50% 10%, #e5f1ff, transparent 45%); }
 .login-card { width: min(100%, 465px); padding: clamp(1.5rem, 5vw, 2.6rem); border: 1px solid var(--line); border-radius: 22px; background: white; box-shadow: 0 22px 65px #102b4e12; }
+.registration-card { width: min(100%, 560px); }
 .login-card h1 { margin: .45rem 0; font-size: 2rem; font-weight: 800; }
+.student-auth { display: grid; min-height: 76vh; place-items: center; padding: 3.5rem 1rem; background: radial-gradient(ellipse at 18% 18%, #dcecff 0, transparent 38%), var(--canvas); }
+.student-auth-card { display: grid; width: min(100%, 980px); grid-template-columns: .9fr 1.1fr; overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: white; box-shadow: 0 24px 70px #102b4e17; }
+.student-auth-intro { display: flex; flex-direction: column; justify-content: center; padding: clamp(2rem, 5vw, 4rem); background: linear-gradient(150deg, #102b4e, #1769d2); color: white; }
+.student-college-logo { display: grid; width: 64px; height: 64px; margin-bottom: 2rem; place-items: center; border: 1px solid #ffffff55; border-radius: 19px; background: #ffffff19; font-size: 1.8rem; }
+.student-auth-intro .eyebrow { color: #b7d9ff; }
+.student-auth-intro h1 { margin: .9rem 0; font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 800; line-height: 1.12; }
+.student-auth-intro > p { color: #d7e8fb; line-height: 1.7; }
+.student-auth-benefit { display: flex; align-items: center; gap: .7rem; margin-top: 2rem; color: #e4f1ff; font-size: .9rem; }
+.student-auth-benefit i { font-size: 1.25rem; }
+.student-auth-form { padding: clamp(2rem, 5vw, 4rem); }
+.student-auth-form h2 { margin: .5rem 0; font-size: 1.8rem; font-weight: 800; }
+.student-auth-subtitle { margin-bottom: 1.8rem; color: var(--muted); font-size: .94rem; }
+.student-auth-form .form-label { color: var(--ink); font-size: .9rem; font-weight: 700; }
+.student-auth-form .form-control { min-height: 50px; border-radius: 10px; }
+.student-password-field { position: relative; }
+.student-password-field .form-control { padding-right: 3rem; }
+.student-password-toggle { position: absolute; top: 50%; right: .8rem; padding: .25rem; transform: translateY(-50%); border: 0; background: transparent; color: var(--muted); }
+.student-auth-options { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .25rem 0 1.5rem; font-size: .87rem; }
+.student-auth-options .form-check { display: flex; align-items: center; gap: .45rem; margin: 0; }
+.student-auth-options .form-check-input { margin: 0; }
+.student-auth-options a, .student-register-prompt a { color: var(--blue); font-weight: 700; }
+.student-login-button { min-height: 50px; border-radius: 10px; font-weight: 700; }
+.student-register-prompt { margin: 1.5rem 0 0; color: var(--muted); text-align: center; font-size: .92rem; }
+@media (max-width: 700px) {
+    .student-auth { min-height: auto; padding: 1.5rem .75rem; }
+    .student-auth-card { grid-template-columns: 1fr; border-radius: 18px; }
+    .student-auth-intro { padding: 1.5rem; }
+    .student-college-logo { width: 50px; height: 50px; margin-bottom: 1rem; border-radius: 15px; }
+    .student-auth-intro > p { margin-bottom: 0; }
+    .student-auth-benefit { margin-top: 1rem; }
+}
+.student-access-note { margin: 1.1rem 0 0; color: #d7eaff; font-size: .95rem; }
 .login-icon { display: grid; width: 52px; height: 52px; margin-bottom: 1rem; place-items: center; border-radius: 16px; background: var(--blue-light); color: var(--blue); font-size: 1.4rem; }
 .delete-icon { background: #fff0ef; color: #c03932; }
 .admin-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: start; gap: 2rem; }

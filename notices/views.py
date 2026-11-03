@@ -8,29 +8,138 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from .forms import AdminLoginForm, ContactForm, NoticeForm
+from .forms import (
+    AdminLoginForm,
+    ContactForm,
+    NoticeForm,
+    StudentLoginForm,
+    StudentRegistrationForm,
+)
 from .models import ContactMessage, Notice
 
 
-def published_notices():
+def published_notices(user=None):
     today = timezone.localdate()
-    return Notice.objects.filter(is_published=True).filter(
+    notices = Notice.objects.filter(is_published=True).filter(
         Q(expiry_date__isnull=True) | Q(expiry_date__gte=today)
     )
+    if user is not None and not user.is_staff:
+        college_id = user.student_profile.college_id
+        if college_id is None:
+            return notices.none()
+        notices = notices.filter(college_id=college_id)
+        notices = notices.filter(
+            Q(target_branch='ALL')
+            | Q(target_branch=user.student_profile.branch)
+        )
+    return notices
 
 
 def home(request):
-    notices = published_notices()
+    if request.user.is_staff:
+        return redirect('admin_dashboard')
+
+    can_view_notices = can_view_notice_board(request.user)
+    notices = (
+        published_notices(request.user)
+        if can_view_notices
+        else Notice.objects.none()
+    )
     return render(request, 'notices/home.html', {
         'categories': Notice.Category.choices,
         'latest_notices': notices[:6],
         'important_notices': notices.filter(is_important=True)[:3],
         'notice_count': notices.count(),
+        'can_view_notices': can_view_notices,
     })
 
 
+def is_registered_student(user):
+    return (
+        user.is_authenticated
+        and not user.is_staff
+        and hasattr(user, 'student_profile')
+    )
+
+
+def can_view_notice_board(user):
+    return user.is_staff or is_registered_student(user)
+
+
+notice_board_required = user_passes_test(
+    can_view_notice_board,
+    login_url='student_login',
+)
+
+
+def student_register(request):
+    if request.user.is_authenticated:
+        if is_registered_student(request.user):
+            return redirect('notice_list')
+        if not request.user.is_staff:
+            messages.error(
+                request,
+                'This account has no student profile. Contact the college administrator.',
+            )
+            return redirect('home')
+
+    form = StudentRegistrationForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user = form.save()
+        if request.user.is_staff:
+            messages.success(request, 'Student account created successfully.')
+            return redirect('admin_dashboard')
+        login(request, user)
+        messages.success(
+            request,
+            'Student account created. Welcome to the notice board!',
+        )
+        return redirect('notice_list')
+    return render(
+        request,
+        'notices/student_register.html',
+        {'form': form},
+    )
+
+
+def student_login(request):
+    if request.user.is_authenticated:
+        if request.user.is_staff:
+            return redirect('admin_dashboard')
+        if not request.user.is_staff and is_registered_student(request.user):
+            return redirect('notice_list')
+
+    form = StudentLoginForm(
+        request,
+        data=request.POST or None,
+    )
+    if request.method == 'POST' and form.is_valid():
+        login(request, form.get_user())
+        request.session.set_expiry(
+            None if form.cleaned_data['remember_me'] else 0
+        )
+        next_url = request.POST.get('next', '')
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect('notice_list')
+    return render(request, 'notices/student_login.html', {'form': form})
+
+
+@require_POST
+@user_passes_test(is_registered_student, login_url='student_login')
+def student_logout(request):
+    logout(request)
+    messages.success(request, 'You have been logged out.')
+    return redirect('student_login')
+
+
+@notice_board_required
 def notice_list(request):
-    notices = published_notices()
+    notices = published_notices(request.user)
     search_query = request.GET.get('q', '').strip()
     selected_category = request.GET.get('category', '').strip()
 
@@ -50,8 +159,9 @@ def notice_list(request):
     })
 
 
+@notice_board_required
 def notice_detail(request, pk):
-    notice = get_object_or_404(published_notices(), pk=pk)
+    notice = get_object_or_404(published_notices(request.user), pk=pk)
     return render(request, 'notices/notice_detail.html', {'notice': notice})
 
 
@@ -71,8 +181,9 @@ def contact(request):
     return render(request, 'notices/contact.html', {'form': form})
 
 
+@notice_board_required
 def download_notice_pdf(request, pk):
-    notice = get_object_or_404(published_notices(), pk=pk)
+    notice = get_object_or_404(published_notices(request.user), pk=pk)
     if not notice.pdf_file:
         raise Http404('This notice has no PDF attachment.')
     return FileResponse(
@@ -84,8 +195,11 @@ def download_notice_pdf(request, pk):
 
 
 def admin_login(request):
-    if request.user.is_authenticated and request.user.is_staff:
-        return redirect('admin_dashboard')
+    if request.user.is_authenticated:
+        if request.user.is_staff:
+            return redirect('admin_dashboard')
+        if is_registered_student(request.user):
+            return redirect('notice_list')
 
     form = AdminLoginForm(
         request,

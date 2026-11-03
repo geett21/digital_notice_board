@@ -34,12 +34,13 @@
             </div>
             <div class="table-responsive">
                 <table class="table align-middle admin-table mb-0">
-                    <thead><tr><th>Notice</th><th>Category</th><th>Status</th><th>Published</th><th class="text-end">Actions</th></tr></thead>
+                    <thead><tr><th>Notice</th><th>Category</th><th>Branch</th><th>Status</th><th>Published</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
                     {% for notice in recent_notices %}
                         <tr>
                             <td><span class="fw-semibold">{{ notice.title }}</span>{% if notice.is_important %}<span class="important-pill ms-2">Important</span>{% endif %}</td>
                             <td>{{ notice.category }}</td>
+                            <td>{{ notice.get_target_branch_display }}</td>
                             <td>{% if notice.expiry_date and notice.expiry_date < today %}<span class="status-expired">Expired</span>{% elif notice.is_published %}<span class="status-published">Published</span>{% else %}<span class="status-draft">Draft</span>{% endif %}</td>
                             <td>{{ notice.created_at|date:"d M Y" }}</td>
                             <td class="text-end text-nowrap">
@@ -48,7 +49,7 @@
                             </td>
                         </tr>
                     {% empty %}
-                        <tr><td colspan="5"><div class="empty-state py-5"><i class="bi bi-inbox"></i><h3>No notices yet</h3><p>Create the first campus announcement.</p><a class="btn btn-primary" href="{% url 'add_notice' %}">Add a notice</a></div></td></tr>
+                        <tr><td colspan="6"><div class="empty-state py-5"><i class="bi bi-inbox"></i><h3>No notices yet</h3><p>Create the first campus announcement.</p><a class="btn btn-primary" href="{% url 'add_notice' %}">Add a notice</a></div></td></tr>
                     {% endfor %}
                     </tbody>
                 </table>

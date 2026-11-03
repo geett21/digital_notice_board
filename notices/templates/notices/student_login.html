@@ -1,0 +1,91 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}Student Login | Digital Notice Board{% endblock %}
+
+{% block content %}
+<section class="student-auth">
+    <div class="student-auth-card">
+        <div class="student-auth-intro">
+            <div class="student-college-logo" aria-hidden="true">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <span class="eyebrow">CAMPUS UPDATES, ALL IN ONE PLACE</span>
+            <h1>Digital Notice Board</h1>
+            <p>Stay informed. Stay connected. Access the notices that matter to you.</p>
+            <div class="student-auth-benefit">
+                <i class="bi bi-shield-check"></i>
+                <span>Secure access to your college notice board</span>
+            </div>
+        </div>
+
+        <div class="student-auth-form">
+            <span class="eyebrow text-primary">STUDENT PORTAL</span>
+            <h2>Student Login Portal</h2>
+            <p class="student-auth-subtitle">Sign in with your college and student credentials.</p>
+
+            <form method="post" action="{% url 'student_login' %}" novalidate>
+                {% csrf_token %}
+                {% if request.POST.next or request.GET.next %}
+                    <input type="hidden" name="next" value="{{ request.POST.next|default:request.GET.next }}">
+                {% endif %}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2" role="alert">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.college_code.id_for_label }}">{{ form.college_code.label }}</label>
+                    {{ form.college_code }}
+                    {% for error in form.college_code.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.username.id_for_label }}">Roll Number / Student ID / Gmail</label>
+                    {{ form.username }}
+                    {% for error in form.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                    <div class="student-password-field">
+                        {{ form.password }}
+                        <button class="student-password-toggle" type="button" id="togglePassword" aria-label="Show password" aria-pressed="false">
+                            <i class="bi bi-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    {% for error in form.password.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+
+                <div class="student-auth-options">
+                    <label class="form-check">
+                        {{ form.remember_me }}
+                        <span class="form-check-label">Remember me</span>
+                    </label>
+                    <a href="{% url 'contact' %}?subject=Password%20reset">Forgot password?</a>
+                </div>
+
+                <button class="btn btn-primary btn-lg w-100 student-login-button" type="submit">
+                    Log in <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+            </form>
+
+            <p class="student-register-prompt">
+                New student? <a href="{% url 'student_register' %}">Register here</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const passwordInput = document.getElementById('{{ form.password.id_for_label }}');
+    const togglePassword = document.getElementById('togglePassword');
+    togglePassword.addEventListener('click', function () {
+        const showing = passwordInput.type === 'password';
+        passwordInput.type = showing ? 'text' : 'password';
+        togglePassword.setAttribute('aria-pressed', String(showing));
+        togglePassword.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
+        togglePassword.innerHTML = showing
+            ? '<i class="bi bi-eye-slash" aria-hidden="true"></i>'
+            : '<i class="bi bi-eye" aria-hidden="true"></i>';
+    });
+</script>
+{% endblock %}

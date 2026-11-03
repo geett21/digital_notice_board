@@ -16,7 +16,7 @@
     <div class="container">
         <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{% url 'home' %}">
             <span class="brand-mark"><i class="bi bi-megaphone-fill"></i></span>
-            <span>Digital Notice <span class="brand-light">Board</span></span>
+            <span>LKCTC <span class="brand-light">Notice Board</span></span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -24,17 +24,25 @@
         <div class="collapse navbar-collapse" id="mainNavigation">
             <div class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
                 <a class="nav-link" href="{% url 'home' %}">Home</a>
-                <a class="nav-link" href="{% url 'notice_list' %}">Student / User</a>
                 <a class="nav-link" href="{% url 'about' %}">About</a>
                 <a class="nav-link" href="{% url 'contact' %}">Contact</a>
                 {% if request.user.is_staff %}
                     <a class="nav-link" href="{% url 'admin_dashboard' %}">Dashboard</a>
+                    <a class="btn btn-sm btn-light text-primary fw-semibold ms-lg-2" href="{% url 'student_register' %}">Create user account</a>
                     <form method="post" action="{% url 'admin_logout' %}" class="d-inline">
                         {% csrf_token %}
                         <button class="btn btn-sm btn-outline-light ms-lg-2" type="submit">Log out</button>
                     </form>
+                {% elif request.user.is_authenticated %}
+                    <a class="nav-link" href="{% url 'notice_list' %}">Notice board</a>
+                    <form method="post" action="{% url 'student_logout' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-outline-light ms-lg-2" type="submit">Student log out</button>
+                    </form>
                 {% else %}
-                    <a class="btn btn-sm btn-light text-primary fw-semibold ms-lg-2" href="{% url 'admin_login' %}"><i class="bi bi-shield-lock me-1"></i>Admin login</a>
+                    <a class="nav-link" href="{% url 'student_login' %}">User login</a>
+                    <a class="btn btn-sm btn-light text-primary fw-semibold ms-lg-2" href="{% url 'student_register' %}">Create user account</a>
+                    <a class="btn btn-sm btn-outline-light ms-lg-2" href="{% url 'admin_login' %}"><i class="bi bi-shield-lock me-1"></i>Admin login</a>
                 {% endif %}
                 <button class="nav-link nav-back-button" id="goBackButton" type="button"><i class="bi bi-arrow-left me-1"></i>Back</button>
             </div>
@@ -58,8 +66,8 @@
 
 <footer class="site-footer">
     <div class="container d-flex flex-column flex-md-row justify-content-between gap-2">
-        <span><i class="bi bi-mortarboard-fill me-2"></i>Campus Digital Notice Board</span>
-        <span><a class="footer-link" href="{% url 'about' %}">About college</a><span class="mx-2">·</span><a class="footer-link" href="{% url 'contact' %}">Contact us</a><span class="mx-2">·</span>Important updates for our college community.</span>
+        <span><i class="bi bi-mortarboard-fill me-2"></i>Lyallpur Khalsa College Technical Campus · Cantt. Road, Jalandhar</span>
+        <span><a class="footer-link" href="{% url 'about' %}">About college</a><span class="mx-2">·</span><a class="footer-link" href="{% url 'contact' %}">Contact us</a><span class="mx-2">·</span>Official campus notices.</span>
     </div>
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

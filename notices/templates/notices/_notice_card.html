@@ -11,6 +11,7 @@
     <p class="notice-excerpt">{{ notice.description|truncatechars:160 }}</p>
     <div class="notice-meta">
         <span><i class="bi bi-calendar3 me-1"></i>{{ notice.created_at|date:"d M Y" }}</span>
+        <span><i class="bi bi-diagram-3 me-1"></i>{{ notice.get_target_branch_display }}</span>
         {% if notice.expiry_date %}
             <span>Expires {{ notice.expiry_date|date:"d M Y" }}</span>
         {% endif %}

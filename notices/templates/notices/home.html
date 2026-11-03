@@ -6,15 +6,23 @@
 <section class="hero-section">
     <div class="container hero-content">
         <div class="hero-copy">
-            <span class="eyebrow"><i class="bi bi-broadcast-pin me-2"></i>WELCOME TO YOUR CAMPUS NOTICE BOARD</span>
+            <span class="eyebrow"><i class="bi bi-broadcast-pin me-2"></i>LYALLPUR KHALSA COLLEGE TECHNICAL CAMPUS · JALANDHAR</span>
             <h1>Every important update.<br><span>All in one place.</span></h1>
             <p>Find the latest examination schedules, campus events, holiday announcements and more.</p>
-            <form class="hero-search" method="get" action="{% url 'notice_list' %}">
-                <i class="bi bi-search"></i>
-                <input type="search" name="q" placeholder="Search college notices..." aria-label="Search college notices">
-                <button class="btn btn-primary" type="submit">Search notices</button>
-            </form>
-            <a class="hero-browse" href="{% url 'notice_list' %}">View all notices <i class="bi bi-arrow-up-right ms-1"></i></a>
+            {% if can_view_notices %}
+                <form class="hero-search" method="get" action="{% url 'notice_list' %}">
+                    <i class="bi bi-search"></i>
+                    <input type="search" name="q" placeholder="Search college notices..." aria-label="Search college notices">
+                    <button class="btn btn-primary" type="submit">Search notices</button>
+                </form>
+                <a class="hero-browse" href="{% url 'notice_list' %}">View all notices <i class="bi bi-arrow-up-right ms-1"></i></a>
+            {% else %}
+                <p class="student-access-note"><i class="bi bi-lock-fill me-2"></i>Create a student account or log in to view college notices.</p>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a class="btn btn-light text-primary fw-semibold" href="{% url 'student_register' %}">Create student account</a>
+                    <a class="btn btn-outline-light" href="{% url 'student_login' %}">User login</a>
+                </div>
+            {% endif %}
         </div>
         <div class="hero-art" aria-hidden="true">
             <div class="hero-orbit orbit-one"></div>
@@ -32,32 +40,50 @@
 </section>
 
 <section class="container stat-strip" aria-label="Notice board summary">
-    <div><span class="stat-number">{{ notice_count }}</span><span class="stat-label">current notices</span></div>
+    <div><span class="stat-number">{% if can_view_notices %}{{ notice_count }}{% else %}Login{% endif %}</span><span class="stat-label">{% if can_view_notices %}current notices{% else %}student access{% endif %}</span></div>
     <div><span class="stat-number">{{ categories|length }}</span><span class="stat-label">notice categories</span></div>
     <div><span class="stat-number"><i class="bi bi-clock-history"></i></span><span class="stat-label">updated for campus</span></div>
 </section>
 
-<section class="container portal-choices" aria-label="Choose a portal">
-    <a class="portal-choice student-portal" href="{% url 'notice_list' %}">
-        <span class="portal-icon"><i class="bi bi-mortarboard-fill"></i></span>
-        <span class="portal-copy">
-            <span class="eyebrow text-primary">FOR STUDENTS & VISITORS</span>
-            <strong>Student / User Portal</strong>
-            <span>Browse, search and download college notices. No login required.</span>
-        </span>
-        <i class="bi bi-arrow-up-right portal-arrow"></i>
-    </a>
-    <a class="portal-choice admin-portal" href="{% url 'admin_login' %}">
+{% if request.user.is_staff %}
+<section class="container portal-choices" aria-label="Administrator portal">
+    <a class="portal-choice admin-portal" href="{% url 'admin_dashboard' %}">
         <span class="portal-icon"><i class="bi bi-shield-lock-fill"></i></span>
         <span class="portal-copy">
-            <span class="eyebrow">FOR COLLEGE STAFF</span>
-            <strong>Admin Login</strong>
-            <span>Sign in securely to publish and manage notices.</span>
+            <span class="eyebrow">COLLEGE STAFF</span>
+            <strong>Admin Dashboard</strong>
+            <span>Publish and manage college notices.</span>
         </span>
         <i class="bi bi-arrow-up-right portal-arrow"></i>
     </a>
 </section>
+{% elif can_view_notices %}
+<section class="container portal-choices" aria-label="Student portal">
+    <a class="portal-choice student-portal" href="{% url 'notice_list' %}">
+        <span class="portal-icon"><i class="bi bi-mortarboard-fill"></i></span>
+        <span class="portal-copy">
+            <span class="eyebrow text-primary">STUDENT PORTAL</span>
+            <strong>Student Notice Board</strong>
+            <span>Browse, search and download your college notices.</span>
+        </span>
+        <i class="bi bi-arrow-up-right portal-arrow"></i>
+    </a>
+</section>
+{% else %}
+<section class="container portal-choices" aria-label="Student portal">
+    <a class="portal-choice student-portal" href="{% url 'student_register' %}">
+        <span class="portal-icon"><i class="bi bi-mortarboard-fill"></i></span>
+        <span class="portal-copy">
+            <span class="eyebrow text-primary">FOR STUDENTS</span>
+            <strong>Student / User Portal</strong>
+            <span>Create your account to view college notices.</span>
+        </span>
+        <i class="bi bi-arrow-up-right portal-arrow"></i>
+    </a>
+</section>
+{% endif %}
 
+{% if can_view_notices %}
 <section class="section-space container">
     <div class="section-heading">
         <div><span class="eyebrow text-primary">FRESH FROM CAMPUS</span><h2>Latest notices</h2></div>
@@ -105,6 +131,18 @@
                 </div>
             {% endfor %}
         </div>
+    </div>
+</section>
+{% endif %}
+
+{% else %}
+<section class="section-space container">
+    <div class="empty-state">
+        <i class="bi bi-person-vcard"></i>
+        <h2>Student account required</h2>
+        <p>Register with your college name, mobile number and branch to view notices and attachments.</p>
+        <a class="btn btn-primary mt-3" href="{% url 'student_register' %}">Create student account</a>
+        <a class="btn btn-outline-primary mt-3" href="{% url 'student_login' %}">Already registered? Log in</a>
     </div>
 </section>
 {% endif %}

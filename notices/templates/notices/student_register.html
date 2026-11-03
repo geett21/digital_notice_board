@@ -1,0 +1,37 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}Create student account | CampusBoard{% endblock %}
+
+{% block content %}
+<section class="login-section">
+    <div class="login-card registration-card">
+        <div class="login-icon"><i class="bi bi-person-vcard"></i></div>
+        <span class="eyebrow text-primary">STUDENT / USER PORTAL</span>
+        <h1>Create your account</h1>
+        <p class="text-secondary mb-4">Enter your college details to access the notice board.</p>
+        <form method="post" action="{% url 'student_register' %}" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+            {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.name == 'college_name' %}
+                        <datalist id="college-name-suggestions">
+                            <option value="LKCTC (Lyallpur Khalsa College Technical Campus, Cantt. Road, Jalandhar)">
+                        </datalist>
+                        <div class="form-text">LKCTC ka suggested naam select karein ya apne college ka naam likhein.</div>
+                    {% endif %}
+                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+            {% endfor %}
+            <button class="btn btn-primary btn-lg w-100 mt-2" type="submit">Create account <i class="bi bi-arrow-right ms-1"></i></button>
+        </form>
+        <p class="text-secondary text-center mt-4 mb-0">Already registered? <a class="text-link" href="{% url 'student_login' %}">Log in</a></p>
+        <a class="back-link d-inline-block mt-3" href="{% url 'admin_login' %}"><i class="bi bi-shield-lock me-1"></i>Admin login</a>
+    </div>
+</section>
+{% endblock %}
