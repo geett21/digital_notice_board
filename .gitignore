@@ -1,15 +1,17 @@
-<<<<<<< HEAD
 __pycache__/
 *.py[cod]
 venv/
 .venv/
 db.sqlite3
 .env
+.env.*
+!.env.example
 media/
 .vscode/
-=======
+*.sqlite3-shm
+*.sqlite3-wal
+
 # Byte-compiled / optimized / DLL files
-__pycache__/
 *.py[codz]
 *$py.class
 
@@ -69,8 +71,8 @@ cover/
 # Django stuff:
 *.log
 local_settings.py
-db.sqlite3
 db.sqlite3-journal
+staticfiles/
 
 # Flask stuff:
 instance/
@@ -228,4 +230,3 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
->>>>>>> 6614afd344f6644db00f53283b3288a847804d7e

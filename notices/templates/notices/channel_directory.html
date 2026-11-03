@@ -1,0 +1,125 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}Notice Categories | CampusBoard{% endblock %}
+
+{% block content %}
+<section class="channel-directory">
+    <div class="container channel-directory-container">
+        <div class="directory-heading">
+            <div>
+                <span class="eyebrow text-primary">CAMPUS COMMUNITY</span>
+                <h1>Notice categories</h1>
+                <p>Explore current college updates by topic.</p>
+            </div>
+            <a class="directory-feed-link" href="{% url 'notice_list' %}">
+                <i class="bi bi-layout-text-window-reverse"></i> View all notices
+            </a>
+        </div>
+
+        <form class="directory-search" method="get" action="{% url 'channel_directory' %}">
+            {% if selected_group != 'active' %}<input type="hidden" name="group" value="{{ selected_group }}">{% endif %}
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" name="q" value="{{ query }}" placeholder="Search categories and latest updates..." aria-label="Search categories">
+            {% if query %}
+                <a href="{% url 'channel_directory' %}{% if selected_group != 'active' %}?group={{ selected_group }}{% endif %}" aria-label="Clear search"><i class="bi bi-x-circle"></i></a>
+            {% endif %}
+            <button type="submit" aria-label="Search"><i class="bi bi-arrow-right"></i></button>
+        </form>
+
+        <nav class="directory-filters" aria-label="Filter categories">
+            <a class="directory-filter {% if selected_group == 'active' %}active{% endif %}" href="{% url 'channel_directory' %}{% if query %}?q={{ query|urlencode }}{% endif %}">
+                <i class="bi bi-lightning-charge"></i> Active
+                <span>{{ active_channel_count }}</span>
+            </a>
+            <a class="directory-filter {% if selected_group == 'all' %}active{% endif %}" href="{% url 'channel_directory' %}?group=all{% if query %}&amp;q={{ query|urlencode }}{% endif %}">
+                All categories
+            </a>
+            <a class="directory-filter {% if selected_group == 'academic' %}active{% endif %}" href="{% url 'channel_directory' %}?group=academic{% if query %}&amp;q={{ query|urlencode }}{% endif %}">
+                <i class="bi bi-mortarboard"></i> Academic
+            </a>
+            <a class="directory-filter {% if selected_group == 'student' %}active{% endif %}" href="{% url 'channel_directory' %}?group=student{% if query %}&amp;q={{ query|urlencode }}{% endif %}">
+                <i class="bi bi-people"></i> Campus life
+            </a>
+        </nav>
+
+        <div class="directory-status">
+            <div class="directory-status-icon"><i class="bi bi-broadcast-pin"></i></div>
+            <div>
+                <strong>Campus notice feed</strong>
+                <span>{{ active_channel_count }} categories currently have published notices</span>
+            </div>
+            <span class="directory-status-live"><span></span> Live</span>
+        </div>
+
+        <section class="directory-popular" aria-labelledby="popular-categories-heading">
+            <div class="directory-popular-heading">
+                <h2 id="popular-categories-heading">Active categories</h2>
+                <span>Tap a category to see its notices</span>
+            </div>
+            <div class="directory-popular-list">
+                {% for category in popular_categories %}
+                    <a class="directory-popular-item" href="{% url 'notice_list' %}?category={{ category.value|urlencode }}">
+                        <span class="directory-popular-icon">
+                            <i class="bi {{ category.icon }}"></i>
+                            <span class="directory-popular-count">{{ category.total }}</span>
+                        </span>
+                        <span class="directory-popular-label">{{ category.label }}</span>
+                    </a>
+                {% empty %}
+                    <p class="directory-popular-empty">New categories will appear here when notices are published.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="directory-section-heading">
+            <div>
+                <h2>{% if selected_group == 'academic' %}Academic categories{% elif selected_group == 'student' %}Campus life{% elif selected_group == 'all' %}All categories{% else %}Currently active{% endif %}</h2>
+                <p>{{ categories|length }} categories to explore</p>
+            </div>
+            <span><i class="bi bi-sort-down"></i> Most notices first</span>
+        </div>
+
+        <div class="directory-card-list">
+            {% for category in categories %}
+                <article class="directory-card directory-card-{{ category.group }}">
+                    <span class="directory-card-accent" aria-hidden="true"></span>
+                    <div class="directory-card-top">
+                        <div class="directory-category-icon"><i class="bi {{ category.icon }}"></i></div>
+                        <div class="directory-card-title">
+                            <span class="directory-category-type">{% if category.group == 'academic' %}Academic{% else %}Campus life{% endif %}</span>
+                            <h3>{{ category.label }}</h3>
+                        </div>
+                        <span class="directory-count">{{ category.total }} notice{{ category.total|pluralize }}</span>
+                    </div>
+                    {% if category.latest_title %}
+                        <div class="directory-latest">
+                            <span class="directory-latest-label"><i class="bi bi-clock-history"></i> Latest update</span>
+                            <strong>{{ category.latest_title }}</strong>
+                            <p>{{ category.latest_description|truncatechars:130 }}</p>
+                        </div>
+                        <div class="directory-card-footer">
+                            <span>{% if category.latest_created %}Updated {{ category.latest_created|date:"d M Y" }}{% endif %}</span>
+                            <a href="{% url 'notice_list' %}?category={{ category.value|urlencode }}">Open category <i class="bi bi-arrow-right"></i></a>
+                        </div>
+                    {% else %}
+                        <div class="directory-empty-category">
+                            <i class="bi bi-inbox"></i> No current notices in this category.
+                        </div>
+                        <div class="directory-card-footer">
+                            <span>Check back for updates</span>
+                            <a href="{% url 'notice_list' %}?category={{ category.value|urlencode }}">Open category <i class="bi bi-arrow-right"></i></a>
+                        </div>
+                    {% endif %}
+                </article>
+            {% empty %}
+                <div class="directory-empty">
+                    <span><i class="bi bi-search"></i></span>
+                    <h2>No categories found</h2>
+                    <p>Try a different search or filter.</p>
+                    <a class="btn btn-primary" href="{% url 'channel_directory' %}?group=all">Show all categories</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

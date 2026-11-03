@@ -21,24 +21,44 @@
             <div><span class="eyebrow text-primary">NOTICE MANAGEMENT</span><h1 class="h2 mb-1">Dashboard</h1><p class="text-secondary mb-0">Manage updates shared with your campus.</p></div>
             <a class="btn btn-primary" href="{% url 'add_notice' %}"><i class="bi bi-plus-lg me-1"></i>Add notice</a>
         </div>
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-xl-3"><div class="metric-card"><span class="metric-icon"><i class="bi bi-collection"></i></span><strong>{{ total_notices }}</strong><span>Total notices</span></div></div>
-            <div class="col-6 col-xl-3"><div class="metric-card"><span class="metric-icon metric-green"><i class="bi bi-check2-circle"></i></span><strong>{{ published_count }}</strong><span>Published</span></div></div>
-            <div class="col-6 col-xl-3"><div class="metric-card"><span class="metric-icon metric-orange"><i class="bi bi-clock-history"></i></span><strong>{{ expired_count }}</strong><span>Expired</span></div></div>
-            <div class="col-6 col-xl-3"><div class="metric-card"><span class="metric-icon metric-red"><i class="bi bi-star"></i></span><strong>{{ important_count }}</strong><span>Important</span></div></div>
+        <div class="row row-cols-2 row-cols-xl-5 g-3 mb-4">
+            <div class="col"><div class="metric-card"><span class="metric-icon"><i class="bi bi-collection"></i></span><strong>{{ total_notices }}</strong><span>Total notices</span></div></div>
+            <div class="col"><div class="metric-card"><span class="metric-icon metric-green"><i class="bi bi-check2-circle"></i></span><strong>{{ published_count }}</strong><span>Published</span></div></div>
+            <div class="col"><div class="metric-card"><span class="metric-icon metric-orange"><i class="bi bi-clock-history"></i></span><strong>{{ expired_count }}</strong><span>Expired</span></div></div>
+            <div class="col"><div class="metric-card"><span class="metric-icon metric-red"><i class="bi bi-star"></i></span><strong>{{ important_count }}</strong><span>Important</span></div></div>
+            <div class="col"><a class="metric-card metric-card-link" href="{% url 'admin:notices_studentprofile_changelist' %}"><span class="metric-icon metric-purple"><i class="bi bi-people"></i></span><strong>{{ student_count }}</strong><span>Students · manage</span></a></div>
         </div>
         <section class="admin-table-card">
-            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                 <div><h2 class="h5 mb-1">Recent notices</h2><p class="small text-secondary mb-0">Edit, publish or remove a campus update.</p></div>
                 <a class="text-link small" href="{% url 'notice_list' %}">View public board <i class="bi bi-arrow-up-right"></i></a>
             </div>
+            <form method="get" class="admin-notice-filters mb-3" aria-label="Filter notices">
+                <label class="visually-hidden" for="noticeCategoryFilter">Filter by category</label>
+                <select class="form-select" name="category" id="noticeCategoryFilter">
+                    <option value="">All categories</option>
+                    {% for value, label in category_options %}
+                        <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <label class="visually-hidden" for="noticeBranchFilter">Filter by target branch</label>
+                <select class="form-select" name="branch" id="noticeBranchFilter">
+                    <option value="">All branches</option>
+                    {% for value, label in branch_options %}
+                        <option value="{{ value }}" {% if selected_branch == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+                {% if selected_category or selected_branch %}<a class="btn btn-light" href="{% url 'admin_dashboard' %}">Clear</a>{% endif %}
+            </form>
             <div class="table-responsive">
                 <table class="table align-middle admin-table mb-0">
-                    <thead><tr><th>Notice</th><th>Category</th><th>Branch</th><th>Status</th><th>Published</th><th class="text-end">Actions</th></tr></thead>
+                    <thead><tr><th>Notice</th><th>College</th><th>Category</th><th>Branch</th><th>Status</th><th>Published</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
                     {% for notice in recent_notices %}
                         <tr>
                             <td><span class="fw-semibold">{{ notice.title }}</span>{% if notice.is_important %}<span class="important-pill ms-2">Important</span>{% endif %}</td>
+                            <td>{{ notice.college.name|default:"—" }}</td>
                             <td>{{ notice.category }}</td>
                             <td>{{ notice.get_target_branch_display }}</td>
                             <td>{% if notice.expiry_date and notice.expiry_date < today %}<span class="status-expired">Expired</span>{% elif notice.is_published %}<span class="status-published">Published</span>{% else %}<span class="status-draft">Draft</span>{% endif %}</td>
@@ -49,7 +69,7 @@
                             </td>
                         </tr>
                     {% empty %}
-                        <tr><td colspan="6"><div class="empty-state py-5"><i class="bi bi-inbox"></i><h3>No notices yet</h3><p>Create the first campus announcement.</p><a class="btn btn-primary" href="{% url 'add_notice' %}">Add a notice</a></div></td></tr>
+                        <tr><td colspan="7"><div class="empty-state py-5"><i class="bi bi-inbox"></i><h3>No notices found</h3><p>Adjust your filters or create a campus announcement.</p><a class="btn btn-primary" href="{% url 'add_notice' %}">Add a notice</a></div></td></tr>
                     {% endfor %}
                     </tbody>
                 </table>

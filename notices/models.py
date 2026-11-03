@@ -12,6 +12,17 @@ class StudentBranch(models.TextChoices):
     ECE = 'ECE', 'ECE'
 
 
+class StudentSemester(models.IntegerChoices):
+    SEMESTER_1 = 1, 'Semester 1'
+    SEMESTER_2 = 2, 'Semester 2'
+    SEMESTER_3 = 3, 'Semester 3'
+    SEMESTER_4 = 4, 'Semester 4'
+    SEMESTER_5 = 5, 'Semester 5'
+    SEMESTER_6 = 6, 'Semester 6'
+    SEMESTER_7 = 7, 'Semester 7'
+    SEMESTER_8 = 8, 'Semester 8'
+
+
 NOTICE_BRANCH_CHOICES = [
     ('ALL', 'All branches'),
     *StudentBranch.choices,
@@ -118,6 +129,11 @@ class StudentProfile(models.Model):
     branch = models.CharField(
         max_length=10,
         choices=StudentBranch.choices,
+    )
+    semester = models.PositiveSmallIntegerField(
+        choices=StudentSemester.choices,
+        blank=True,
+        null=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

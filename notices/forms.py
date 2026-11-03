@@ -1,8 +1,13 @@
 from django import forms
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    PasswordResetForm,
+    UserCreationForm,
+)
 from django.core.validators import RegexValidator
 from django.db import transaction
+from django.db.models import Q
 
 from .models import (
     College,
@@ -10,6 +15,7 @@ from .models import (
     Notice,
     StudentBranch,
     StudentProfile,
+    StudentSemester,
 )
 
 
@@ -67,6 +73,15 @@ class AdminLoginForm(forms.Form):
 
 
 class StudentRegistrationForm(UserCreationForm):
+    full_name = forms.CharField(
+        label='Full name',
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'name',
+            'placeholder': 'Enter your full name',
+        }),
+    )
     email = forms.EmailField(
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
@@ -74,13 +89,13 @@ class StudentRegistrationForm(UserCreationForm):
             'placeholder': 'Enter your Gmail address',
         }),
     )
-    college_name = forms.CharField(
-        max_length=180,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
+    college = forms.ModelChoiceField(
+        queryset=College.objects.none(),
+        empty_label='Select your college',
+        help_text='Choose the college whose code you will use to log in.',
+        widget=forms.Select(attrs={
+            'class': 'form-select',
             'autocomplete': 'organization',
-            'list': 'college-name-suggestions',
-            'placeholder': 'Your college name',
         }),
     )
     mobile_number = forms.CharField(
@@ -105,13 +120,37 @@ class StudentRegistrationForm(UserCreationForm):
             'class': 'form-select',
         }),
     )
+    semester = forms.TypedChoiceField(
+        choices=[
+            ('', 'Select your semester'),
+            *StudentSemester.choices,
+        ],
+        coerce=int,
+        empty_value=None,
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+        }),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['username'].label = 'Registration number'
         self.fields['email'].label = 'Gmail address'
-        if not self.is_bound:
-            self.initial.setdefault('college_name', DEFAULT_COLLEGE_NAME)
+        colleges = College.objects.filter(
+            Q(code__isnull=False) & ~Q(code=''),
+        ).order_by('name')
+        self.fields['college'].queryset = colleges
+        if not colleges.exists():
+            self.fields['college'].help_text = (
+                'Registration is unavailable until a college administrator '
+                'adds a college and login code.'
+            )
+        if not self.is_bound and 'college' not in self.initial:
+            default_college = self.fields['college'].queryset.filter(
+                name=DEFAULT_COLLEGE_NAME,
+            ).first()
+            if default_college:
+                self.initial['college'] = default_college.pk
         self.fields['username'].widget.attrs.update({
             'class': 'form-control',
             'autocomplete': 'username',
@@ -130,7 +169,7 @@ class StudentRegistrationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = ('username', 'email')
+        fields = ('full_name', 'username', 'email', 'college')
 
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()
@@ -140,20 +179,51 @@ class StudentRegistrationForm(UserCreationForm):
             )
         return email
 
+    def clean_full_name(self):
+        return ' '.join(self.cleaned_data['full_name'].split())
+
     @transaction.atomic
     def save(self, commit=True):
-        user = super().save(commit=commit)
+        user = super().save(commit=False)
+        name_parts = self.cleaned_data['full_name'].split(maxsplit=1)
+        user.first_name = name_parts[0]
+        user.last_name = name_parts[1] if len(name_parts) > 1 else ''
         if commit:
+            user.save()
+            college = self.cleaned_data['college']
             StudentProfile.objects.create(
                 user=user,
-                college_name=self.cleaned_data['college_name'],
-                college=College.objects.get_or_create(
-                    name=self.cleaned_data['college_name'],
-                )[0],
+                college_name=college.name,
+                college=college,
                 mobile_number=self.cleaned_data['mobile_number'],
                 branch=self.cleaned_data['branch'],
+                semester=self.cleaned_data['semester'],
             )
         return user
+
+
+class StudentPasswordResetForm(PasswordResetForm):
+    email = forms.EmailField(
+        label='Student account email',
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'autocomplete': 'email',
+            'placeholder': 'Enter your registered email',
+        }),
+    )
+
+    def get_users(self, email):
+        user_model = get_user_model()
+        active_users = user_model._default_manager.filter(
+            email__iexact=email,
+            is_active=True,
+            is_staff=False,
+            student_profile__isnull=False,
+        )
+        return (
+            user for user in active_users
+            if user.has_usable_password()
+        )
 
 
 class StudentLoginForm(AuthenticationForm):

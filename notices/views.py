@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import user_passes_test
-from django.db.models import Q
+from django.db.models import Count, OuterRef, Q, Subquery
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -12,10 +12,11 @@ from .forms import (
     AdminLoginForm,
     ContactForm,
     NoticeForm,
+    StudentPasswordResetForm,
     StudentLoginForm,
     StudentRegistrationForm,
 )
-from .models import ContactMessage, Notice
+from .models import ContactMessage, Notice, StudentProfile
 
 
 def published_notices(user=None):
@@ -40,6 +41,11 @@ def home(request):
         return redirect('admin_dashboard')
 
     can_view_notices = can_view_notice_board(request.user)
+    student_profile = (
+        getattr(request.user, 'student_profile', None)
+        if can_view_notices and not request.user.is_staff
+        else None
+    )
     notices = (
         published_notices(request.user)
         if can_view_notices
@@ -51,6 +57,7 @@ def home(request):
         'important_notices': notices.filter(is_important=True)[:3],
         'notice_count': notices.count(),
         'can_view_notices': can_view_notices,
+        'student_profile': student_profile,
     })
 
 
@@ -139,9 +146,24 @@ def student_logout(request):
 
 @notice_board_required
 def notice_list(request):
-    notices = published_notices(request.user)
+    all_notices = published_notices(request.user)
+    category_counts = dict(
+        all_notices.values('category')
+        .annotate(total=Count('pk'))
+        .values_list('category', 'total')
+    )
+    category_filters = [
+        {
+            'value': value,
+            'label': label,
+            'count': category_counts.get(value, 0),
+        }
+        for value, label in Notice.Category.choices
+    ]
+    notices = all_notices
     search_query = request.GET.get('q', '').strip()
     selected_category = request.GET.get('category', '').strip()
+    important_only = request.GET.get('important') == '1'
 
     if search_query:
         notices = notices.filter(
@@ -150,12 +172,112 @@ def notice_list(request):
         )
     if selected_category in Notice.Category.values:
         notices = notices.filter(category=selected_category)
+    if important_only:
+        notices = notices.filter(is_important=True)
 
     return render(request, 'notices/notice_list.html', {
         'notices': notices,
-        'categories': Notice.Category.choices,
+        'category_filters': category_filters,
+        'total_notice_count': all_notices.count(),
         'search_query': search_query,
         'selected_category': selected_category,
+        'important_only': important_only,
+    })
+
+
+@notice_board_required
+def channel_directory(request):
+    notices = published_notices(request.user)
+    latest_notice = notices.filter(
+        category=OuterRef('category'),
+    ).order_by('-created_at', '-pk')
+    summaries = {
+        summary['category']: summary
+        for summary in notices.values('category').annotate(
+            total=Count('pk'),
+            latest_pk=Subquery(latest_notice.values('pk')[:1]),
+            latest_title=Subquery(latest_notice.values('title')[:1]),
+            latest_description=Subquery(
+                latest_notice.values('description')[:1],
+            ),
+            latest_created=Subquery(latest_notice.values('created_at')[:1]),
+        )
+    }
+
+    academic_categories = {
+        Notice.Category.EXAMINATION,
+        Notice.Category.RESULTS,
+        Notice.Category.ADMISSIONS,
+        Notice.Category.PLACEMENT,
+        Notice.Category.SCHOLARSHIPS,
+        Notice.Category.TIME_TABLE,
+    }
+    student_categories = {
+        Notice.Category.EVENTS,
+        Notice.Category.HOLIDAYS,
+        Notice.Category.SPORTS,
+        Notice.Category.GENERAL,
+    }
+    category_icons = {
+        Notice.Category.EXAMINATION: 'bi-journal-check',
+        Notice.Category.RESULTS: 'bi-award',
+        Notice.Category.EVENTS: 'bi-calendar-event',
+        Notice.Category.HOLIDAYS: 'bi-sun',
+        Notice.Category.ADMISSIONS: 'bi-mortarboard',
+        Notice.Category.SPORTS: 'bi-trophy',
+        Notice.Category.PLACEMENT: 'bi-briefcase',
+        Notice.Category.GENERAL: 'bi-megaphone',
+        Notice.Category.SCHOLARSHIPS: 'bi-cash-coin',
+        Notice.Category.TIME_TABLE: 'bi-calendar3',
+    }
+
+    query = request.GET.get('q', '').strip()
+    selected_group = request.GET.get('group', 'active').strip()
+    if selected_group not in {'active', 'academic', 'student', 'all'}:
+        selected_group = 'active'
+
+    categories = []
+    for value, label in Notice.Category.choices:
+        summary = summaries.get(value, {})
+        group = (
+            'academic' if value in academic_categories else 'student'
+        )
+        if selected_group == 'active' and not summary:
+            continue
+        if selected_group in {'academic', 'student'} and group != selected_group:
+            continue
+        if query and not any(
+            query.casefold() in str(text or '').casefold()
+            for text in (
+                label,
+                summary.get('latest_title'),
+                summary.get('latest_description'),
+            )
+        ):
+            continue
+        categories.append({
+            'value': value,
+            'label': label,
+            'group': group,
+            'icon': category_icons[value],
+            'total': summary.get('total', 0),
+            'latest_pk': summary.get('latest_pk'),
+            'latest_title': summary.get('latest_title'),
+            'latest_description': summary.get('latest_description'),
+            'latest_created': summary.get('latest_created'),
+        })
+
+    categories.sort(key=lambda category: (-category['total'], category['label']))
+    return render(request, 'notices/channel_directory.html', {
+        'categories': categories,
+        'popular_categories': [
+            category for category in categories if category['total']
+        ][:4],
+        'query': query,
+        'selected_group': selected_group,
+        'active_channel_count': sum(
+            bool(summary) for summary in summaries.values()
+        ),
     })
 
 
@@ -229,12 +351,34 @@ staff_required = user_passes_test(
 def admin_dashboard(request):
     today = timezone.localdate()
     notices = Notice.objects.all()
+    branch_options = Notice._meta.get_field('target_branch').choices
+    category_options = Notice.Category.choices
+    selected_branch = request.GET.get('branch', '').strip()
+    selected_category = request.GET.get('category', '').strip()
+    recent_notices = notices.select_related('college')
+    if selected_branch in dict(branch_options):
+        recent_notices = recent_notices.filter(
+            target_branch=selected_branch,
+        )
+    else:
+        selected_branch = ''
+    if selected_category in Notice.Category.values:
+        recent_notices = recent_notices.filter(
+            category=selected_category,
+        )
+    else:
+        selected_category = ''
     return render(request, 'notices/admin_dashboard.html', {
         'total_notices': notices.count(),
         'published_count': notices.filter(is_published=True).count(),
         'expired_count': notices.filter(expiry_date__lt=today).count(),
         'important_count': notices.filter(is_important=True).count(),
-        'recent_notices': notices[:10],
+        'student_count': StudentProfile.objects.count(),
+        'recent_notices': recent_notices[:10],
+        'branch_options': branch_options,
+        'category_options': category_options,
+        'selected_branch': selected_branch,
+        'selected_category': selected_category,
         'today': today,
         'unread_messages_count': ContactMessage.objects.filter(
             is_read=False,

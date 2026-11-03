@@ -45,6 +45,22 @@
     <div><span class="stat-number"><i class="bi bi-clock-history"></i></span><span class="stat-label">updated for campus</span></div>
 </section>
 
+{% if student_profile %}
+<section class="container student-dashboard-profile" aria-labelledby="student-dashboard-heading">
+    <div class="student-dashboard-welcome">
+        <span class="eyebrow text-primary">STUDENT DASHBOARD</span>
+        <h2 id="student-dashboard-heading">Welcome, {{ request.user.get_full_name|default:request.user.get_username }}</h2>
+        <p>Your college notices, all in one place.</p>
+    </div>
+    <div class="student-profile-details">
+        <div><span>College</span><strong>{{ student_profile.college.name|default:student_profile.college_name }}</strong></div>
+        <div><span>Branch</span><strong>{{ student_profile.get_branch_display }}</strong></div>
+        <div><span>Semester</span><strong>{% if student_profile.semester %}{{ student_profile.get_semester_display }}{% else %}Not provided{% endif %}</strong></div>
+    </div>
+    <a class="btn btn-primary student-dashboard-action" href="{% url 'notice_list' %}">Browse notices <i class="bi bi-arrow-right ms-1"></i></a>
+</section>
+{% endif %}
+
 {% if request.user.is_staff %}
 <section class="container portal-choices" aria-label="Administrator portal">
     <a class="portal-choice admin-portal" href="{% url 'admin_dashboard' %}">
@@ -140,7 +156,7 @@
     <div class="empty-state">
         <i class="bi bi-person-vcard"></i>
         <h2>Student account required</h2>
-        <p>Register with your college name, mobile number and branch to view notices and attachments.</p>
+        <p>Register with your full name, configured college, mobile number, branch and semester to view notices and attachments.</p>
         <a class="btn btn-primary mt-3" href="{% url 'student_register' %}">Create student account</a>
         <a class="btn btn-outline-primary mt-3" href="{% url 'student_login' %}">Already registered? Log in</a>
     </div>

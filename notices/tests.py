@@ -1,7 +1,9 @@
 from datetime import timedelta
+import re
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -121,9 +123,11 @@ class NoticeBoardTests(TestCase):
             'email': 'unsupported@example.com',
             'password1': 'Strong-Pass-723!',
             'password2': 'Strong-Pass-723!',
-            'college_name': 'North Campus College',
+            'full_name': 'Unsupported Student',
+            'college': self.college.pk,
             'mobile_number': '+1 555-765-4321',
             'branch': 'ADMIN',
+            'semester': '1',
         })
         self.assertEqual(invalid_response.status_code, 200)
         self.assertFalse(
@@ -141,6 +145,7 @@ class NoticeBoardTests(TestCase):
         self.create_notice(
             title='Annual sports meet',
             category=Notice.Category.SPORTS,
+            is_important=True,
         )
         self.client.force_login(self.student)
 
@@ -152,11 +157,57 @@ class NoticeBoardTests(TestCase):
             reverse('notice_list'),
             {'category': Notice.Category.SPORTS},
         )
+        important_response = self.client.get(
+            reverse('notice_list'),
+            {'important': '1'},
+        )
 
         self.assertContains(search_response, 'Midterm schedule')
         self.assertNotContains(search_response, 'Annual sports meet')
         self.assertContains(category_response, 'Annual sports meet')
         self.assertNotContains(category_response, 'Midterm schedule')
+        self.assertContains(important_response, 'Annual sports meet')
+        self.assertNotContains(important_response, 'Midterm schedule')
+        self.assertContains(category_response, 'notice-category-scroll')
+
+    def test_channel_directory_uses_visible_notices_for_categories(self):
+        self.create_notice(
+            title='Semester examination update',
+            category=Notice.Category.EXAMINATION,
+        )
+        self.create_notice(
+            title='Annual campus sports',
+            category=Notice.Category.SPORTS,
+        )
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('channel_directory'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Notice categories')
+        self.assertContains(response, 'Semester examination update')
+        self.assertContains(response, 'Annual campus sports')
+        self.assertContains(response, '1 notice')
+
+        academic_response = self.client.get(
+            reverse('channel_directory'),
+            {'group': 'academic'},
+        )
+        self.assertContains(academic_response, 'Semester examination update')
+        self.assertNotContains(academic_response, 'Annual campus sports')
+
+        search_response = self.client.get(
+            reverse('channel_directory'),
+            {'q': 'sports'},
+        )
+        self.assertContains(search_response, 'Annual campus sports')
+        self.assertNotContains(search_response, 'Semester examination update')
+
+    def test_channel_directory_requires_notice_board_access(self):
+        response = self.client.get(reverse('channel_directory'))
+        self.assertRedirects(
+            response,
+            f'{reverse("student_login")}?next={reverse("channel_directory")}',
+        )
 
     def test_students_only_see_their_branch_and_all_branch_notices(self):
         cse_notice = self.create_notice(
@@ -278,20 +329,24 @@ class NoticeBoardTests(TestCase):
         response = self.client.post(reverse('student_register'), {
             'username': 'new-student',
             'email': 'new.student@gmail.com',
+            'full_name': 'New Student',
             'password1': 'Strong-Pass-723!',
             'password2': 'Strong-Pass-723!',
-            'college_name': 'North Campus College',
+            'college': self.college.pk,
             'mobile_number': '+1 555-765-4321',
             'branch': StudentBranch.IT,
+            'semester': '3',
         })
 
         user = get_user_model().objects.get(username='new-student')
         profile = user.student_profile
         self.assertRedirects(response, reverse('notice_list'))
-        self.assertEqual(profile.college_name, 'North Campus College')
-        self.assertEqual(profile.college.name, 'North Campus College')
+        self.assertEqual(profile.college_name, self.college.name)
+        self.assertEqual(profile.college, self.college)
         self.assertEqual(profile.mobile_number, '+1 555-765-4321')
         self.assertEqual(profile.branch, StudentBranch.IT)
+        self.assertEqual(profile.semester, 3)
+        self.assertEqual(user.get_full_name(), 'New Student')
         self.assertEqual(user.email, 'new.student@gmail.com')
         self.assertFalse(user.is_staff)
         self.assertIn('_auth_user_id', self.client.session)
@@ -304,26 +359,103 @@ class NoticeBoardTests(TestCase):
             notice.title,
         )
 
-    def test_registration_prefills_lkctc_college_name(self):
-        response = self.client.get(reverse('student_register'))
+    def test_registration_rejects_colleges_without_a_login_code(self):
+        self.college.code = None
+        self.college.save(update_fields=['code'])
+        registration_page = self.client.get(reverse('student_register'))
         self.assertContains(
-            response,
-            'value="LKCTC (Lyallpur Khalsa College Technical Campus, Cantt. Road, Jalandhar)"',
+            registration_page,
+            'Registration is unavailable until a college administrator',
         )
-        self.assertContains(response, 'list="college-name-suggestions"')
-        self.assertContains(response, 'id="college-name-suggestions"')
+
+        response = self.client.post(reverse('student_register'), {
+            'username': 'unconfigured-college-student',
+            'email': 'unconfigured@example.com',
+            'full_name': 'Unconfigured Student',
+            'password1': 'Strong-Pass-723!',
+            'password2': 'Strong-Pass-723!',
+            'college': self.college.pk,
+            'mobile_number': '+1 555-765-4321',
+            'branch': StudentBranch.CSE,
+            'semester': '1',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            get_user_model().objects.filter(
+                username='unconfigured-college-student',
+            ).exists(),
+        )
+        self.assertIn('college', response.context['form'].errors)
+
+    def test_registration_offers_configured_college_and_student_details(self):
+        response = self.client.get(reverse('student_register'))
+        self.assertContains(response, 'Example College (EXAMPLE)')
+        self.assertContains(response, 'Full name')
         self.assertContains(response, 'Registration number')
         self.assertContains(response, 'Gmail address')
+        self.assertContains(response, 'Select your semester')
+        self.assertContains(response, 'Semester 8')
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    )
+    def test_student_password_reset_sends_a_valid_single_use_link(self):
+        self.student.email = 'student@gmail.com'
+        self.student.save(update_fields=['email'])
+        self.admin.email = 'admin@example.com'
+        self.admin.save(update_fields=['email'])
+
+        response = self.client.post(reverse('password_reset'), {
+            'email': self.student.email,
+        })
+
+        self.assertRedirects(response, reverse('password_reset_done'))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('student@gmail.com', mail.outbox[0].to)
+        reset_path = re.search(
+            r'/student/reset/[^/\s]+/[^/\s]+/',
+            mail.outbox[0].body,
+        ).group()
+        confirmation = self.client.get(reset_path, follow=True)
+        self.assertEqual(confirmation.status_code, 200)
+        reset_response = self.client.post(
+            confirmation.request['PATH_INFO'],
+            {
+                'new_password1': 'New-Strong-Pass-723!',
+                'new_password2': 'New-Strong-Pass-723!',
+            },
+        )
+
+        self.assertRedirects(
+            reset_response,
+            reverse('password_reset_complete'),
+        )
+        self.student.refresh_from_db()
+        self.admin.refresh_from_db()
+        self.assertTrue(self.student.check_password('New-Strong-Pass-723!'))
+        self.assertFalse(self.admin.check_password('New-Strong-Pass-723!'))
+
+    def test_password_reset_response_does_not_disclose_unknown_emails(self):
+        response = self.client.post(reverse('password_reset'), {
+            'email': 'not-registered@example.com',
+        })
+
+        self.assertRedirects(response, reverse('password_reset_done'))
+        self.assertEqual(len(mail.outbox), 0)
+
 
     def test_student_registration_requires_valid_mobile_and_matching_passwords(self):
         response = self.client.post(reverse('student_register'), {
             'username': 'invalid-student',
             'email': 'invalid.student@gmail.com',
+            'full_name': 'Invalid Student',
             'password1': 'Strong-Pass-723!',
             'password2': 'Different-Pass-723!',
-            'college_name': 'North Campus College',
+            'college': self.college.pk,
             'mobile_number': 'not-a-phone-number',
             'branch': StudentBranch.IT,
+            'semester': '2',
         })
 
         self.assertEqual(response.status_code, 200)
@@ -338,6 +470,7 @@ class NoticeBoardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Digital Notice Board')
         self.assertContains(response, 'Student Login Portal')
+        self.assertContains(response, 'notices/images/favicon.svg')
         self.assertContains(response, 'College Code')
         self.assertContains(response, 'Roll Number / Student ID')
         self.assertContains(response, 'Gmail')
@@ -377,11 +510,13 @@ class NoticeBoardTests(TestCase):
         response = self.client.post(reverse('student_register'), {
             'username': 'admin-created-student',
             'email': 'admin.created@gmail.com',
+            'full_name': 'Admin Created',
             'password1': 'Strong-Pass-723!',
             'password2': 'Strong-Pass-723!',
-            'college_name': self.college.name,
+            'college': self.college.pk,
             'mobile_number': '+1 555-765-4321',
             'branch': StudentBranch.CSE,
+            'semester': '1',
         })
 
         self.assertRedirects(response, reverse('admin_dashboard'))
@@ -525,11 +660,13 @@ class NoticeBoardTests(TestCase):
         response = self.client.post(reverse('student_register'), {
             'username': 'duplicate-email-student',
             'email': 'ALREADY.REGISTERED@gmail.com',
+            'full_name': 'Duplicate Email',
             'password1': 'Strong-Pass-723!',
             'password2': 'Strong-Pass-723!',
-            'college_name': self.college.name,
+            'college': self.college.pk,
             'mobile_number': '+1 555-765-4321',
             'branch': StudentBranch.CSE,
+            'semester': '1',
         })
 
         self.assertEqual(response.status_code, 200)
@@ -633,8 +770,52 @@ class NoticeBoardTests(TestCase):
         self.assertEqual(dashboard.context['expired_count'], 1)
         self.assertEqual(add_form.status_code, 200)
         self.assertContains(add_form, 'Save notice')
+        self.assertContains(add_form, 'LIVE PREVIEW')
+        self.assertContains(add_form, 'Target branch')
+        self.assertContains(add_form, 'broadcastPreviewTitle')
         self.assertEqual(edit_form.status_code, 200)
         self.assertContains(edit_form, 'Current notice')
+
+    def test_admin_dashboard_shows_student_count_and_filters_notices(self):
+        self.create_notice(
+            title='CSE examination',
+            category=Notice.Category.EXAMINATION,
+            target_branch=StudentBranch.CSE,
+        )
+        self.create_notice(
+            title='IT sports event',
+            category=Notice.Category.SPORTS,
+            target_branch=StudentBranch.IT,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get(
+            reverse('admin_dashboard'),
+            {
+                'category': Notice.Category.SPORTS,
+                'branch': StudentBranch.IT,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['student_count'], 1)
+        self.assertContains(response, 'IT sports event')
+        self.assertNotContains(response, 'CSE examination')
+
+    def test_student_home_shows_profile_and_academic_details(self):
+        self.student.first_name = 'Campus'
+        self.student.last_name = 'Student'
+        self.student.save(update_fields=['first_name', 'last_name'])
+        self.student.student_profile.semester = 4
+        self.student.student_profile.save(update_fields=['semester'])
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('home'))
+
+        self.assertContains(response, 'Welcome, Campus Student')
+        self.assertContains(response, self.college.name)
+        self.assertContains(response, 'CSE')
+        self.assertContains(response, 'Semester 4')
 
     def test_published_notice_requires_a_college(self):
         form_data = {

@@ -41,9 +41,18 @@ class StudentProfileAdmin(admin.ModelAdmin):
         'college_name',
         'college',
         'branch',
+        'semester',
         'mobile_number',
         'created_at',
     )
     list_filter = ('college', 'branch')
-    search_fields = ('user__username', 'college_name', 'branch', 'mobile_number')
+    search_fields = (
+        'user__username',
+        'user__first_name',
+        'user__last_name',
+        'user__email',
+        'college_name',
+        'branch',
+        'mobile_number',
+    )
     readonly_fields = ('created_at',)

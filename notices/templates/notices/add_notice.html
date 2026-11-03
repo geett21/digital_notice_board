@@ -1,39 +1,209 @@
-
 {% extends 'notices/base.html' %}
 
 {% block title %}{{ page_title }} | CampusBoard{% endblock %}
 
 {% block content %}
-<section class="container section-space form-page">
-    <a class="back-link" href="{% url 'admin_dashboard' %}"><i class="bi bi-arrow-left me-1"></i>Back to dashboard</a>
-    <div class="form-card mt-3">
-        <span class="eyebrow text-primary">NOTICE MANAGEMENT</span>
-        <h1 class="h2 mt-1">{{ page_title }}</h1>
-        <p class="text-secondary mb-4">Share a clear, up-to-date announcement with students.</p>
-        <form method="post" enctype="multipart/form-data" novalidate>
+<section class="broadcast-page">
+    <div class="container broadcast-container">
+        <a class="broadcast-back" href="{% url 'admin_dashboard' %}">
+            <i class="bi bi-arrow-left"></i> Back to dashboard
+        </a>
+
+        <div class="broadcast-heading">
+            <div class="broadcast-heading-icon"><i class="bi bi-megaphone"></i></div>
+            <div>
+                <span class="eyebrow text-primary">OFFICIAL COLLEGE CHANNEL</span>
+                <h1>{{ page_title }}</h1>
+                <p>Prepare a clear announcement for the right students.</p>
+            </div>
+            <span class="broadcast-secure"><i class="bi bi-shield-check"></i> Admin workspace</span>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="broadcast-layout" novalidate>
             {% csrf_token %}
-            {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-            {% for field in form %}
-                {% if field.name == 'is_important' or field.name == 'is_published' %}
-                    <div class="form-check form-switch mb-3">
-                        {{ field }}
-                        <label class="form-check-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger broadcast-errors" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="broadcast-form-column">
+                <section class="broadcast-panel">
+                    <div class="broadcast-panel-heading">
+                        <span class="broadcast-panel-icon"><i class="bi bi-people"></i></span>
+                        <div>
+                            <h2>Who should see this?</h2>
+                            <p>Choose the college and branch for this announcement.</p>
+                        </div>
                     </div>
-                {% else %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    <div class="broadcast-field-grid">
+                        <div class="broadcast-field">
+                            <label for="{{ form.college.id_for_label }}">{{ form.college.label }}</label>
+                            {{ form.college }}
+                            {% for error in form.college.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="broadcast-field">
+                            <label for="{{ form.target_branch.id_for_label }}">{{ form.target_branch.label }}</label>
+                            {{ form.target_branch }}
+                            {% for error in form.target_branch.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                        </div>
                     </div>
-                {% endif %}
-            {% endfor %}
-            <div class="d-flex flex-wrap gap-2 pt-2">
-                <button class="btn btn-primary px-4" type="submit"><i class="bi bi-check2 me-1"></i>Save notice</button>
-                <a class="btn btn-outline-secondary px-4" href="{% url 'admin_dashboard' %}">Cancel</a>
+                    <div class="broadcast-audience-note">
+                        <i class="bi bi-info-circle"></i>
+                        Students outside the selected college or branch will not see this notice.
+                    </div>
+                </section>
+
+                <section class="broadcast-panel">
+                    <div class="broadcast-panel-heading">
+                        <span class="broadcast-panel-icon"><i class="bi bi-pencil-square"></i></span>
+                        <div>
+                            <h2>Notice details</h2>
+                            <p>Add a useful title and all the information students need.</p>
+                        </div>
+                    </div>
+                    <div class="broadcast-field">
+                        <div class="broadcast-label-row">
+                            <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                            <span id="broadcastTitleCount">0 / 200</span>
+                        </div>
+                        {{ form.title }}
+                        {% for error in form.title.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="broadcast-field">
+                        <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                        {{ form.description }}
+                        {% for error in form.description.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="broadcast-field">
+                        <label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+                        {{ form.category }}
+                        {% for error in form.category.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <label class="broadcast-toggle-card" for="{{ form.is_important.id_for_label }}">
+                        <span class="broadcast-toggle-icon"><i class="bi bi-star"></i></span>
+                        <span class="broadcast-toggle-copy">
+                            <strong>Mark as important</strong>
+                            <small>Highlight this notice for students.</small>
+                        </span>
+                        {{ form.is_important }}
+                    </label>
+                    {% for error in form.is_important.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </section>
+
+                <section class="broadcast-panel">
+                    <div class="broadcast-panel-heading">
+                        <span class="broadcast-panel-icon"><i class="bi bi-paperclip"></i></span>
+                        <div>
+                            <h2>Attachment and publishing</h2>
+                            <p>Optionally attach a PDF and choose when the notice is available.</p>
+                        </div>
+                    </div>
+                    <div class="broadcast-field">
+                        <label for="{{ form.pdf_file.id_for_label }}">{{ form.pdf_file.label }}</label>
+                        <div class="broadcast-upload">
+                            <span class="broadcast-upload-icon"><i class="bi bi-file-earmark-arrow-up"></i></span>
+                            <span>
+                                <strong>Choose a PDF file</strong>
+                                <small>PDF documents up to 10 MB</small>
+                            </span>
+                            {{ form.pdf_file }}
+                        </div>
+                        {% if notice and notice.pdf_file %}
+                            <div class="broadcast-existing-file">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                                Current file: {{ notice.pdf_file.name|cut:"notices/" }}
+                            </div>
+                        {% endif %}
+                        {% for error in form.pdf_file.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="broadcast-field">
+                        <label for="{{ form.expiry_date.id_for_label }}">{{ form.expiry_date.label }}</label>
+                        {{ form.expiry_date }}
+                        <small class="broadcast-help">Leave blank if this notice should not expire automatically.</small>
+                        {% for error in form.expiry_date.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <label class="broadcast-toggle-card" for="{{ form.is_published.id_for_label }}">
+                        <span class="broadcast-toggle-icon broadcast-toggle-publish"><i class="bi bi-send"></i></span>
+                        <span class="broadcast-toggle-copy">
+                            <strong>Publish notice</strong>
+                            <small>When enabled, the notice is visible to the selected students.</small>
+                        </span>
+                        {{ form.is_published }}
+                    </label>
+                    {% for error in form.is_published.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </section>
+            </div>
+
+            <aside class="broadcast-preview-column">
+                <section class="broadcast-preview-panel">
+                    <div class="broadcast-preview-heading">
+                        <div>
+                            <span class="eyebrow">LIVE PREVIEW</span>
+                            <h2>Student notice card</h2>
+                        </div>
+                        <i class="bi bi-eye"></i>
+                    </div>
+                    <article class="broadcast-preview-card">
+                        <div class="broadcast-preview-meta">
+                            <span class="broadcast-preview-category" id="broadcastPreviewCategory">Category</span>
+                            <span id="broadcastPreviewDate">Today</span>
+                        </div>
+                        <h3 id="broadcastPreviewTitle">Your notice title will appear here</h3>
+                        <p id="broadcastPreviewDescription">Your announcement details will appear here so you can check how they read before saving.</p>
+                        <div class="broadcast-preview-attachment" id="broadcastPreviewFile" hidden>
+                            <i class="bi bi-file-earmark-pdf"></i>
+                            <span id="broadcastPreviewFileName"></span>
+                        </div>
+                        <div class="broadcast-preview-footer">
+                            <span><i class="bi bi-diagram-3"></i> <span id="broadcastPreviewBranch">All branches</span></span>
+                            <span id="broadcastPreviewImportant" hidden><i class="bi bi-star-fill"></i> Important</span>
+                        </div>
+                    </article>
+                    <p class="broadcast-preview-help"><i class="bi bi-info-circle"></i> Preview only. Save the notice to make your changes permanent.</p>
+                </section>
+            </aside>
+
+            <div class="broadcast-actions">
+                <a class="btn btn-outline-secondary" href="{% url 'admin_dashboard' %}">Cancel</a>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle me-1"></i>Save notice</button>
             </div>
         </form>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        const title = document.getElementById('{{ form.title.id_for_label }}');
+        const description = document.getElementById('{{ form.description.id_for_label }}');
+        const category = document.getElementById('{{ form.category.id_for_label }}');
+        const branch = document.getElementById('{{ form.target_branch.id_for_label }}');
+        const important = document.getElementById('{{ form.is_important.id_for_label }}');
+        const pdf = document.getElementById('{{ form.pdf_file.id_for_label }}');
+        const titlePreview = document.getElementById('broadcastPreviewTitle');
+        const descriptionPreview = document.getElementById('broadcastPreviewDescription');
+        const categoryPreview = document.getElementById('broadcastPreviewCategory');
+        const branchPreview = document.getElementById('broadcastPreviewBranch');
+        const titleCount = document.getElementById('broadcastTitleCount');
+
+        function updatePreview() {
+            titlePreview.textContent = title.value.trim() || 'Your notice title will appear here';
+            descriptionPreview.textContent = description.value.trim()
+                || 'Your announcement details will appear here so you can check how they read before saving.';
+            categoryPreview.textContent = category.selectedOptions[0].text;
+            branchPreview.textContent = branch.selectedOptions[0].text;
+            titleCount.textContent = title.value.length + ' / 200';
+            document.getElementById('broadcastPreviewImportant').hidden = !important.checked;
+            const fileName = pdf.files.length ? pdf.files[0].name : '';
+            document.getElementById('broadcastPreviewFile').hidden = !fileName;
+            document.getElementById('broadcastPreviewFileName').textContent = fileName;
+        }
+
+        [title, description, category, branch, important, pdf].forEach(function (field) {
+            field.addEventListener('input', updatePreview);
+            field.addEventListener('change', updatePreview);
+        });
+        updatePreview();
+    })();
+</script>
 {% endblock %}

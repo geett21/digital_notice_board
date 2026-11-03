@@ -3,50 +3,85 @@
 {% block title %}Notices | CampusBoard{% endblock %}
 
 {% block content %}
-<section class="page-hero">
-    <div class="container">
-        <span class="eyebrow text-primary">CAMPUS UPDATES</span>
-        <h1>Notice board</h1>
-        <p>Search announcements or narrow down by category.</p>
-    </div>
-</section>
-<section class="container section-space">
-    <form method="get" class="filter-panel row g-3 align-items-end mb-4">
-        <div class="col-md-6">
-            <label class="form-label" for="notice-search">Search notices</label>
-            <input id="notice-search" class="form-control" type="search" name="q" value="{{ search_query }}" placeholder="Search title or description">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label" for="notice-category">Category</label>
-            <select id="notice-category" class="form-select" name="category">
-                <option value="">All categories</option>
-                {% for value, label in categories %}
-                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2 d-grid">
-            <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button>
-        </div>
-    </form>
-    {% if search_query or selected_category %}
-        <p class="results-label">Results matching your filters</p>
-    {% endif %}
-    <div class="row g-4">
-        {% for notice in notices %}
-            <div class="col-md-6 col-lg-4">
-                {% include 'notices/_notice_card.html' %}
+<section class="notice-feed">
+    <div class="container notice-feed-container">
+        <div class="notice-feed-heading">
+            <div>
+                <span class="eyebrow text-primary">CAMPUS COMMUNITY</span>
+                <h1>Notice board</h1>
+                <p>Important updates and announcements for your college.</p>
             </div>
-        {% empty %}
-            <div class="col-12">
-                <div class="empty-state">
-                    <i class="bi bi-search"></i>
-                    <h2>No matching notices</h2>
-                    <p>Try a different search or category.</p>
-                    <a class="btn btn-outline-primary" href="{% url 'notice_list' %}">Clear filters</a>
+            <span class="notice-feed-live"><i class="bi bi-broadcast"></i> Live campus feed</span>
+        </div>
+
+        <form method="get" class="notice-feed-search">
+            {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+            {% if important_only %}<input type="hidden" name="important" value="1">{% endif %}
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input id="notice-search" type="search" name="q" value="{{ search_query }}" placeholder="Search notices, updates, categories..." aria-label="Search notices">
+            {% if search_query %}
+                <a class="notice-search-clear" href="{% url 'notice_list' %}{% if selected_category %}?category={{ selected_category|urlencode }}{% endif %}{% if important_only %}{% if selected_category %}&amp;{% else %}?{% endif %}important=1{% endif %}" aria-label="Clear search"><i class="bi bi-x-circle"></i></a>
+            {% endif %}
+            <button type="submit" aria-label="Search"><i class="bi bi-arrow-right"></i></button>
+        </form>
+
+        <nav class="notice-category-scroll" aria-label="Filter notices by category">
+            <a class="notice-filter-chip {% if not selected_category and not important_only %}active{% endif %}" href="{% url 'notice_list' %}{% if search_query %}?q={{ search_query|urlencode }}{% endif %}">
+                All notices <span>{{ total_notice_count }}</span>
+            </a>
+            <a class="notice-filter-chip {% if important_only %}active{% endif %}" href="{% url 'notice_list' %}?important=1{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}">
+                <i class="bi bi-exclamation-circle"></i> Important
+            </a>
+            {% for category in category_filters %}
+                <a class="notice-filter-chip {% if selected_category == category.value %}active{% endif %}" href="{% url 'notice_list' %}?category={{ category.value|urlencode }}{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}{% if important_only %}&amp;important=1{% endif %}">
+                    {{ category.label }}
+                    {% if category.count %}<span>{{ category.count }}</span>{% endif %}
+                </a>
+            {% endfor %}
+        </nav>
+
+        <div class="notice-feed-summary">
+            <span><i class="bi bi-bell"></i> {{ notices|length }} update{{ notices|length|pluralize }}{% if search_query or selected_category or important_only %} found{% else %} available{% endif %}</span>
+            <span>For your college and branch</span>
+        </div>
+
+        <div class="notice-feed-list">
+        {% for notice in notices %}
+            <article class="feed-notice {% if notice.is_important %}feed-notice-important{% endif %}">
+                {% if notice.is_important %}<span class="feed-notice-accent" aria-hidden="true"></span>{% endif %}
+                <div class="feed-notice-content">
+                    <div class="feed-notice-topline">
+                        <div class="feed-notice-labels">
+                            <span class="feed-category">{{ notice.category }}</span>
+                            {% if notice.is_important %}<span class="feed-important"><i class="bi bi-exclamation-triangle-fill"></i> Important</span>{% endif %}
+                        </div>
+                        <span class="feed-date"><i class="bi bi-clock"></i> {{ notice.created_at|date:"d M Y" }}</span>
+                    </div>
+                    <h2><a href="{% url 'notice_detail' notice.pk %}">{{ notice.title }}</a></h2>
+                    <p class="feed-description">{{ notice.description|truncatechars:240 }}</p>
+                    {% if notice.pdf_file %}
+                        <a class="feed-attachment" href="{% url 'download_notice_pdf' notice.pk %}">
+                            <span class="feed-pdf-icon"><i class="bi bi-file-earmark-pdf"></i></span>
+                            <span class="feed-attachment-name">{{ notice.pdf_file.name|cut:"notices/" }}</span>
+                            <span class="feed-attachment-action">Download <i class="bi bi-arrow-down-circle"></i></span>
+                        </a>
+                    {% endif %}
+                    <div class="feed-notice-footer">
+                        <span><i class="bi bi-diagram-3"></i> {{ notice.get_target_branch_display }}</span>
+                        {% if notice.expiry_date %}<span><i class="bi bi-calendar-event"></i> Until {{ notice.expiry_date|date:"d M Y" }}</span>{% endif %}
+                        <a href="{% url 'notice_detail' notice.pk %}">Read notice <i class="bi bi-arrow-right"></i></a>
+                    </div>
                 </div>
+            </article>
+        {% empty %}
+            <div class="feed-empty-state">
+                <span><i class="bi bi-inbox"></i></span>
+                <h2>No notices found</h2>
+                <p>Try another search or choose a different category.</p>
+                <a class="btn btn-primary" href="{% url 'notice_list' %}">Reset filters</a>
             </div>
         {% endfor %}
+        </div>
     </div>
 </section>
 {% endblock %}
