@@ -26,16 +26,11 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or secrets.token_urlsafe(50)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in {'true', '1', 'yes'}
-
 ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.environ.get(
-        'DJANGO_ALLOWED_HOSTS',
-        '127.0.0.1,localhost',
-    ).split(',')
-    if host.strip()
+    '127.0.0.1',
+    'localhost',
+    'digital-notice-board-839q.onrender.com',
 ]
-
 
 # Application definition
 
