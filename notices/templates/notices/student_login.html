@@ -38,7 +38,7 @@
                     {% for error in form.college_code.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="{{ form.username.id_for_label }}">Roll Number / Student ID / Gmail</label>
+                    <label class="form-label" for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
                     {{ form.username }}
                     {% for error in form.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                 </div>
@@ -58,7 +58,7 @@
                         {{ form.remember_me }}
                         <span class="form-check-label">Remember me</span>
                     </label>
-                    <a href="{% url 'password_reset' %}">Forgot password?</a>
+                    <a href="{% url 'contact' %}?subject=Password%20reset">Forgot password?</a>
                 </div>
 
                 <button class="btn btn-primary btn-lg w-100 student-login-button" type="submit">

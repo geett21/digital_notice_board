@@ -54,6 +54,11 @@ urlpatterns = [
         views.download_notice_pdf,
         name='download_notice_pdf',
     ),
+    path(
+    'student/password-reset/',
+    views.student_password_reset,
+    name='student_password_reset',
+),
 
     path('admin-login/', views.admin_login, name='admin_login'),
     path('dashboard/', views.admin_dashboard, name='admin_dashboard'),
