@@ -12,6 +12,7 @@ from .models import (
     ContactMessage,
     Notice,
     StudentBranch,
+    StudentSemester,
     StudentProfile,
 )
 
@@ -117,17 +118,18 @@ class NoticeBoardTests(TestCase):
         self.assertContains(response, 'value="ECE"')
 
         invalid_response = self.client.post(reverse('student_register'), {
-            'username': 'unsupported-branch-student',
+            'email': 'unsupported-branch@gmail.com',
+            'college_code': self.college.code,
             'password1': 'Strong-Pass-723!',
             'password2': 'Strong-Pass-723!',
-            'college_name': 'North Campus College',
             'mobile_number': '+1 555-765-4321',
             'branch': 'ADMIN',
+            'semester': StudentSemester.SEMESTER_2,
         })
         self.assertEqual(invalid_response.status_code, 200)
         self.assertFalse(
             get_user_model().objects.filter(
-                username='unsupported-branch-student',
+                email='unsupported-branch@gmail.com',
             ).exists(),
         )
 
@@ -257,6 +259,7 @@ class NoticeBoardTests(TestCase):
         self.assertContains(home_response, 'Create student account')
         self.assertContains(home_response, 'Student / User Portal')
         self.assertContains(home_response, f'href="{reverse("admin_login")}"')
+        self.assertContains(home_response, f'href="{reverse("admin_register")}"')
         self.assertNotContains(home_response, 'FOR COLLEGE STAFF')
         self.assertNotContains(home_response, notice.title)
 
@@ -275,21 +278,23 @@ class NoticeBoardTests(TestCase):
 
     def test_student_registration_saves_college_mobile_and_branch(self):
         response = self.client.post(reverse('student_register'), {
-            'username': 'new-student',
+            'email': 'new-student@gmail.com',
+            'college_code': self.college.code,
             'password1': 'Strong-Pass-723!',
             'password2': 'Strong-Pass-723!',
-            'college_name': 'North Campus College',
             'mobile_number': '+1 555-765-4321',
             'branch': StudentBranch.IT,
+            'semester': StudentSemester.SEMESTER_4,
         })
 
-        user = get_user_model().objects.get(username='new-student')
+        user = get_user_model().objects.get(email='new-student@gmail.com')
         profile = user.student_profile
         self.assertRedirects(response, reverse('notice_list'))
-        self.assertEqual(profile.college_name, 'North Campus College')
-        self.assertEqual(profile.college.name, 'North Campus College')
+        self.assertEqual(profile.college_name, self.college.name)
+        self.assertEqual(profile.college, self.college)
         self.assertEqual(profile.mobile_number, '+1 555-765-4321')
         self.assertEqual(profile.branch, StudentBranch.IT)
+        self.assertEqual(profile.semester, StudentSemester.SEMESTER_4)
         self.assertFalse(user.is_staff)
         self.assertIn('_auth_user_id', self.client.session)
         notice = self.create_notice(
@@ -301,44 +306,136 @@ class NoticeBoardTests(TestCase):
             notice.title,
         )
 
-    def test_registration_prefills_lkctc_college_name(self):
+    def test_registration_requests_gmail_and_college_code(self):
         response = self.client.get(reverse('student_register'))
-        self.assertContains(
-            response,
-            'value="LKCTC (Lyallpur Khalsa College Technical Campus, Cantt. Road, Jalandhar)"',
-        )
-        self.assertContains(response, 'list="college-name-suggestions"')
-        self.assertContains(response, 'id="college-name-suggestions"')
-        self.assertContains(response, 'Registration number')
+        self.assertContains(response, 'Your Gmail address')
+        self.assertContains(response, 'Enter your college code')
+        self.assertContains(response, 'Semester 1')
+        self.assertNotContains(response, 'Your college name')
 
     def test_student_registration_requires_valid_mobile_and_matching_passwords(self):
         response = self.client.post(reverse('student_register'), {
-            'username': 'invalid-student',
+            'email': 'invalid-student@gmail.com',
+            'college_code': self.college.code,
             'password1': 'Strong-Pass-723!',
             'password2': 'Different-Pass-723!',
-            'college_name': 'North Campus College',
             'mobile_number': 'not-a-phone-number',
             'branch': StudentBranch.IT,
+            'semester': StudentSemester.SEMESTER_2,
         })
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(
-            get_user_model().objects.filter(username='invalid-student').exists(),
+            get_user_model().objects.filter(
+                email='invalid-student@gmail.com',
+            ).exists(),
         )
         self.assertContains(response, 'Enter a valid mobile number.')
+
+    def test_student_gmail_can_be_reused_across_colleges_and_login_selects_correct_account(self):
+        second_college = College.objects.create(
+            name='Second College',
+            code='SECOND',
+        )
+        signup_url = reverse('student_register')
+        signup_data = {
+            'email': 'shared@gmail.com',
+            'password1': 'Strong-Pass-723!',
+            'password2': 'Strong-Pass-723!',
+            'mobile_number': '+1 555-765-4321',
+            'branch': StudentBranch.IT,
+            'semester': StudentSemester.SEMESTER_4,
+        }
+
+        first_response = self.client.post(signup_url, {
+            **signup_data,
+            'college_code': self.college.code,
+        })
+        self.assertRedirects(first_response, reverse('notice_list'))
+        first_user = get_user_model().objects.get(
+            email='shared@gmail.com',
+            student_profile__college=self.college,
+        )
+
+        self.client.logout()
+        second_response = self.client.post(signup_url, {
+            **signup_data,
+            'college_code': second_college.code,
+        })
+        self.assertRedirects(second_response, reverse('notice_list'))
+        second_user = get_user_model().objects.get(
+            email='shared@gmail.com',
+            student_profile__college=second_college,
+        )
+        self.assertNotEqual(first_user.pk, second_user.pk)
+
+        self.client.logout()
+        login_response = self.client.post(reverse('student_login'), {
+            'college_code': second_college.code,
+            'username': 'shared@gmail.com',
+            'password': 'Strong-Pass-723!',
+        })
+        self.assertRedirects(login_response, reverse('notice_list'))
+        self.assertEqual(
+            str(self.client.session['_auth_user_id']),
+            str(second_user.pk),
+        )
+
+    def test_student_gmail_cannot_be_reused_within_same_college(self):
+        signup_url = reverse('student_register')
+        signup_data = {
+            'email': 'duplicate@gmail.com',
+            'college_code': self.college.code,
+            'password1': 'Strong-Pass-723!',
+            'password2': 'Strong-Pass-723!',
+            'mobile_number': '+1 555-765-4321',
+            'branch': StudentBranch.IT,
+            'semester': StudentSemester.SEMESTER_4,
+        }
+        self.client.post(signup_url, signup_data)
+        self.client.logout()
+
+        response = self.client.post(signup_url, signup_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'already exists for this college')
+        self.assertEqual(
+            get_user_model().objects.filter(
+                email='duplicate@gmail.com',
+            ).count(),
+            1,
+        )
 
     def test_student_login_page_shows_requested_controls(self):
         response = self.client.get(reverse('student_login'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Digital Notice Board')
+        self.assertContains(response, 'Campus Notice Board')
         self.assertContains(response, 'Student Login Portal')
         self.assertContains(response, 'College Code')
-        self.assertContains(response, 'Roll Number / Student ID')
+        self.assertContains(response, 'Gmail address')
         self.assertContains(response, 'Remember me')
         self.assertContains(response, 'Forgot password?')
         self.assertContains(response, 'Register here')
         self.assertContains(response, 'id="togglePassword"')
+
+    def test_admin_can_switch_to_student_account_from_student_login(self):
+        self.client.force_login(self.admin)
+
+        login_page = self.client.get(reverse('student_login'))
+        self.assertEqual(login_page.status_code, 200)
+        self.assertContains(login_page, 'Student Login Portal')
+
+        response = self.client.post(reverse('student_login'), {
+            'college_code': self.college.code,
+            'username': self.student.username,
+            'password': 'test-student-password-91',
+        })
+
+        self.assertRedirects(response, reverse('notice_list'))
+        self.assertEqual(
+            str(self.client.session['_auth_user_id']),
+            str(self.student.pk),
+        )
 
     def test_authenticated_homepage_and_navigation_are_role_specific(self):
         self.client.force_login(self.student)
@@ -476,6 +573,48 @@ class NoticeBoardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'does not have administrator access')
         self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_admin_signup_requires_code_and_creates_staff_account(self):
+        signup_url = reverse('admin_register')
+        self.assertEqual(self.client.get(signup_url).status_code, 200)
+
+        missing_code_response = self.client.post(signup_url, {
+            'username': 'blocked-admin',
+            'password1': 'Strong-Pass-723!',
+            'password2': 'Strong-Pass-723!',
+        })
+        self.assertEqual(missing_code_response.status_code, 200)
+        self.assertFalse(
+            get_user_model().objects.filter(username='blocked-admin').exists()
+        )
+
+        invalid_response = self.client.post(signup_url, {
+            'username': 'blocked-admin',
+            'password1': 'Strong-Pass-723!',
+            'password2': 'Strong-Pass-723!',
+            'signup_code': 'wrong-code',
+        })
+        self.assertEqual(invalid_response.status_code, 200)
+        self.assertContains(invalid_response, 'admin signup code is incorrect')
+        self.assertFalse(
+            get_user_model().objects.filter(username='blocked-admin').exists()
+        )
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+        response = self.client.post(signup_url, {
+            'username': 'new-admin',
+            'password1': 'Strong-Pass-723!',
+            'password2': 'Strong-Pass-723!',
+            'signup_code': 'campus@0102',
+        })
+        self.assertRedirects(response, reverse('admin_dashboard'))
+        admin = get_user_model().objects.get(username='new-admin')
+        self.assertTrue(admin.is_staff)
+        self.assertFalse(admin.is_superuser)
+        self.assertEqual(
+            str(admin.pk),
+            self.client.session['_auth_user_id'],
+        )
 
     def test_admin_pages_require_staff_and_logout_requires_post(self):
         dashboard_url = reverse('admin_dashboard')
@@ -622,7 +761,7 @@ class NoticeBoardTests(TestCase):
     def test_about_page_and_contact_message_submission(self):
         about_response = self.client.get(reverse('about'))
         contact_response = self.client.get(reverse('contact'))
-        self.assertContains(about_response, 'Lyallpur Khalsa College Technical Campus')
+        self.assertContains(about_response, 'Campus')
         self.assertEqual(contact_response.status_code, 200)
 
         response = self.client.post(reverse('contact'), {

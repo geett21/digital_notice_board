@@ -167,7 +167,11 @@ EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'false').lower() in {
 }
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL',
-    'Digital Notice Board <webmaster@localhost>',
+    'Campus Notice Board <webmaster@localhost>',
+)
+ADMIN_SIGNUP_CODE = os.environ.get(
+    'ADMIN_SIGNUP_CODE',
+    'campus@0102',
 )
 MEDIA_URL = '/media/'
 

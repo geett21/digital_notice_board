@@ -1,0 +1,31 @@
+{% extends 'notices/base.html' %}
+
+{% block title %}Admin signup | Campus Notice Board{% endblock %}
+
+{% block content %}
+<section class="login-section">
+    <div class="login-card registration-card">
+        <div class="login-icon"><i class="bi bi-shield-plus"></i></div>
+        <span class="eyebrow text-primary">ADMINISTRATION</span>
+        <h1>Create admin account</h1>
+        <p class="text-secondary mb-4">Enter your admin signup code to create an administrator account.</p>
+        <form method="post" action="{% url 'admin_register' %}" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
+            {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+            {% endfor %}
+            <button class="btn btn-primary btn-lg w-100 mt-2" type="submit">Create admin account <i class="bi bi-arrow-right ms-1"></i></button>
+        </form>
+        <p class="text-secondary text-center mt-4 mb-0">Already have an admin account? <a class="text-link" href="{% url 'admin_login' %}">Sign in</a></p>
+        <a class="back-link d-inline-block mt-3" href="{% url 'home' %}"><i class="bi bi-arrow-left me-1"></i>Back to notice board</a>
+    </div>
+</section>
+{% endblock %}

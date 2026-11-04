@@ -2,7 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
 from . import views
-from .forms import StudentPasswordResetForm
+from .forms import StudentPasswordResetForm, StudentSetPasswordForm
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -33,6 +33,7 @@ urlpatterns = [
     path(
         'student/reset/<uidb64>/<token>/',
         auth_views.PasswordResetConfirmView.as_view(
+            form_class=StudentSetPasswordForm,
             template_name='notices/password_reset_confirm.html',
             success_url=reverse_lazy('password_reset_complete'),
         ),
@@ -61,6 +62,7 @@ urlpatterns = [
 ),
 
     path('admin-login/', views.admin_login, name='admin_login'),
+    path('admin-signup/', views.admin_register, name='admin_register'),
     path('dashboard/', views.admin_dashboard, name='admin_dashboard'),
 
     path('add-notice/', views.add_notice, name='add_notice'),

@@ -1,4 +1,4 @@
-# Digital Notice Board Management System
+# Campus Notice Board Management System
 
 A Django and SQLite college notice board for LKCTC (Lyallpur Khalsa College Technical Campus, Cantt. Road, Jalandhar). Students register with their college, mobile number and branch, then sign in to browse current notices. Staff administrators use a separate login to create, publish, edit and delete notices.
 
@@ -26,7 +26,7 @@ python manage.py runserver
 
 If PowerShell prevents virtual-environment activation, either allow it for the current terminal with `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, or call `.\venv\Scripts\python.exe` instead of activating it.
 
-Open the site at <http://127.0.0.1:8000/>, create a student account at <http://127.0.0.1:8000/student/register/>, and log in at <http://127.0.0.1:8000/student/login/> using the college code, registration number and password. Before students log in, add each college and its code through the existing Django admin at <http://127.0.0.1:8000/admin/>. College names must match the name used during student registration. Students must register and log in to view notices. Staff use the separate login at <http://127.0.0.1:8000/admin-login/>. Keep the terminal running while using the site. Staff sign in with the username and password created by `createsuperuser`; credentials are not stored in application code.
+Open the site at <http://127.0.0.1:8000/>, create a student account at <http://127.0.0.1:8000/student/register/>, and log in at <http://127.0.0.1:8000/student/login/> using the Gmail address, college code and password. Before students register, add each college and its code through the existing Django admin at <http://127.0.0.1:8000/admin/>. Students must register and log in to view notices. Staff use the separate login at <http://127.0.0.1:8000/admin-login/> or create an account at <http://127.0.0.1:8000/admin-signup/> using the configured admin signup code. Set `ADMIN_SIGNUP_CODE` to a private value in production. Keep the terminal running while using the site.
 
 ## Setup on macOS or Linux
 
@@ -47,8 +47,8 @@ Use the same browser URLs listed above while the development server is running.
 
 ### Students
 
-- Create an account with a registration number, password, college name, mobile number and branch (CSE, IT, BCA or ECE); a default LKCTC college name is provided.
-- Log in with your college code, registration number and password to view current important and latest announcements for your college and branch.
+- Create an account with a Gmail address, college code, mobile number, branch (CSE, IT, BCA or ECE), semester and password.
+- Log in with your Gmail address, college code and password to view current important and latest announcements for your college and branch.
 - Open **All notices** to search notice titles/descriptions or filter by category.
 - Select a notice to view its full description, category, publication date and expiry date.
 - Use its PDF button to download an attachment, when available.
@@ -58,6 +58,7 @@ Use the same browser URLs listed above while the development server is running.
 ### Staff administrators
 
 - Sign in at `/admin-login/` with an active Django staff account.
+- Create an administrator account at `/admin-signup/` only if you have the admin signup code. Configure `ADMIN_SIGNUP_CODE` outside source control for deployments.
 - The dashboard shows notice totals, published notices, expired notices and important notices.
 - Add or edit notices, assign each notice to a college, select the target branch (CSE, IT, BCA, ECE or all branches), set expiry dates, mark important notices, and publish or unpublish them.
 - Attachments must be genuine PDF files no larger than 10 MB.

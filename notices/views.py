@@ -12,6 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .forms import (
+    AdminRegistrationForm,
     AdminLoginForm,
     ContactForm,
     NoticeForm,
@@ -133,9 +134,6 @@ def student_register(request):
 
 def student_login(request):
     if request.user.is_authenticated:
-        if request.user.is_staff:
-            return redirect('admin_dashboard')
-
         if is_registered_student(request.user):
             return redirect('notice_list')
 
@@ -451,6 +449,33 @@ def admin_login(request):
         return redirect('admin_dashboard')
 
     return render(request, 'notices/admin_login.html', {
+        'form': form,
+    })
+
+
+def admin_register(request):
+    if request.user.is_authenticated:
+        if request.user.is_staff:
+            return redirect('admin_dashboard')
+        destination = (
+            'notice_list'
+            if is_registered_student(request.user)
+            else 'home'
+        )
+        return redirect(destination)
+
+    form = AdminRegistrationForm(request.POST or None)
+
+    if request.method == 'POST' and form.is_valid():
+        user = form.save()
+        login(request, user)
+        messages.success(
+            request,
+            'Administrator account created successfully.',
+        )
+        return redirect('admin_dashboard')
+
+    return render(request, 'notices/admin_register.html', {
         'form': form,
     })
 

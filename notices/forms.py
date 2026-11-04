@@ -1,15 +1,29 @@
 
+import uuid
+
 from django import forms
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import (
+    AuthenticationForm,
+    SetPasswordForm,
+    UserCreationForm,
+)
+from django.contrib.auth.password_validation import (
+    MinimumLengthValidator,
+    get_default_password_validators,
+    password_validators_help_text_html,
+)
 from django.core.validators import RegexValidator
 from django.db import transaction
+from django.db.models import Q
 
 from .models import (
     College,
     ContactMessage,
     Notice,
     StudentBranch,
+    StudentSemester,
     StudentProfile,
 )
 
@@ -17,6 +31,15 @@ from .models import (
 DEFAULT_COLLEGE_NAME = (
     'LKCTC (Lyallpur Khalsa College Technical Campus, Cantt. Road, Jalandhar)'
 )
+
+
+def password_help_text_without_minimum_length():
+    validators = [
+        validator
+        for validator in get_default_password_validators()
+        if not isinstance(validator, MinimumLengthValidator)
+    ]
+    return password_validators_help_text_html(validators)
 
 
 class AdminLoginForm(forms.Form):
@@ -75,15 +98,79 @@ class AdminLoginForm(forms.Form):
         return cleaned_data
 
 
-class StudentRegistrationForm(UserCreationForm):
+class AdminRegistrationForm(UserCreationForm):
+    signup_code = forms.CharField(
+        label='Admin signup code',
+        strip=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control form-control-lg',
+            'autocomplete': 'off',
+            'placeholder': 'Enter the admin signup code',
+        }),
+    )
 
-    college_name = forms.CharField(
-        max_length=180,
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].widget.attrs.update({
+            'class': 'form-control form-control-lg',
+            'autocomplete': 'username',
+            'placeholder': 'Choose a username',
+        })
+        self.fields['password1'].widget.attrs.update({
+            'class': 'form-control form-control-lg',
+            'autocomplete': 'new-password',
+            'placeholder': 'Create a password',
+        })
+        self.fields['password1'].help_text = (
+            password_help_text_without_minimum_length()
+        )
+        self.fields['password2'].widget.attrs.update({
+            'class': 'form-control form-control-lg',
+            'autocomplete': 'new-password',
+            'placeholder': 'Enter the password again',
+        })
+
+    class Meta(UserCreationForm.Meta):
+        model = get_user_model()
+        fields = ('username',)
+
+    def clean_signup_code(self):
+        signup_code = self.cleaned_data['signup_code']
+        if signup_code != settings.ADMIN_SIGNUP_CODE:
+            raise forms.ValidationError('The admin signup code is incorrect.')
+        return signup_code
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.is_staff = True
+        if commit:
+            user.save()
+        return user
+
+
+class StudentRegistrationForm(UserCreationForm):
+    username = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput,
+    )
+
+    college_code = forms.CharField(
+        label='College code',
+        max_length=32,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'autocomplete': 'organization',
-            'list': 'college-name-suggestions',
-            'placeholder': 'Your college name',
+            'autocomplete': 'off',
+            'placeholder': 'Enter your college code',
+        }),
+    )
+
+    semester = forms.ChoiceField(
+        choices=[
+            ('', 'Select your semester'),
+            *StudentSemester.choices,
+        ],
+        widget=forms.Select(attrs={
+            'class': 'form-select',
         }),
     )
 
@@ -116,25 +203,32 @@ class StudentRegistrationForm(UserCreationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields['username'].label = 'Registration number'
-
-        if not self.is_bound:
-            self.initial.setdefault(
-                'college_name',
-                DEFAULT_COLLEGE_NAME,
-            )
-
-        self.fields['username'].widget.attrs.update({
+        self.college = None
+        self.fields['email'].widget.attrs.update({
             'class': 'form-control',
-            'autocomplete': 'username',
-            'placeholder': 'Enter your registration number',
+            'autocomplete': 'email',
+            'type': 'email',
+            'placeholder': 'Your Gmail address',
         })
+        self.order_fields([
+            'username',
+            'email',
+            'college_code',
+            'branch',
+            'semester',
+            'mobile_number',
+            'password1',
+            'password2',
+        ])
 
         self.fields['password1'].widget.attrs.update({
             'class': 'form-control',
             'autocomplete': 'new-password',
             'placeholder': 'Create a password',
         })
+        self.fields['password1'].help_text = (
+            password_help_text_without_minimum_length()
+        )
 
         self.fields['password2'].widget.attrs.update({
             'class': 'form-control',
@@ -144,26 +238,66 @@ class StudentRegistrationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = ('username',)
+        fields = ('username', 'email')
+
+    def clean_username(self):
+        username = uuid.uuid4().hex
+        while get_user_model().objects.filter(username=username).exists():
+            username = uuid.uuid4().hex
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if not email.endswith('@gmail.com'):
+            raise forms.ValidationError('Enter a valid Gmail address.')
+        return email
+
+    def clean_college_code(self):
+        code = self.cleaned_data['college_code'].strip()
+        self.college = College.objects.filter(code__iexact=code).first()
+        if self.college is None:
+            raise forms.ValidationError(
+                'Enter a valid college code provided by your college.'
+            )
+        return code
+
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('email')
+        if email and self.college and get_user_model().objects.filter(
+            email__iexact=email,
+            student_profile__college=self.college,
+        ).exists():
+            self.add_error(
+                'email',
+                'An account with this Gmail address already exists for this college.',
+            )
+        return cleaned_data
 
     @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=commit)
 
         if commit:
-            college, created = College.objects.get_or_create(
-                name=self.cleaned_data['college_name'],
-            )
-
             StudentProfile.objects.create(
                 user=user,
-                college_name=self.cleaned_data['college_name'],
-                college=college,
+                college_name=self.college.name,
+                college=self.college,
                 mobile_number=self.cleaned_data['mobile_number'],
                 branch=self.cleaned_data['branch'],
+                semester=self.cleaned_data['semester'],
             )
 
         return user
+
+
+class StudentSetPasswordForm(SetPasswordForm):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['new_password1'].help_text = (
+            password_help_text_without_minimum_length()
+        )
 
 
 class StudentLoginForm(AuthenticationForm):
@@ -183,7 +317,7 @@ class StudentLoginForm(AuthenticationForm):
     error_messages = {
         **AuthenticationForm.error_messages,
         'invalid_login': (
-            'The college code, student ID, or password is incorrect.'
+            'The college code, Gmail address, or password is incorrect.'
         ),
     }
 
@@ -199,12 +333,13 @@ class StudentLoginForm(AuthenticationForm):
             'remember_me',
         ])
 
-        self.fields['username'].label = 'Roll Number / Student ID'
+        self.fields['username'].label = 'Gmail address'
 
         self.fields['username'].widget.attrs.update({
-            'class': 'form-control',
-            'autocomplete': 'username',
-            'placeholder': 'Enter your roll number or student ID',
+            'class': 'form-control form-control-lg',
+            'autocomplete': 'email',
+            'type': 'email',
+            'placeholder': 'Enter your Gmail address',
         })
 
         self.fields['password'].widget.attrs.update({
@@ -218,14 +353,40 @@ class StudentLoginForm(AuthenticationForm):
         })
 
     def clean(self):
-        code = self.data.get('college_code', '').strip().upper()
-
+        cleaned_data = self.cleaned_data
+        code = cleaned_data.get('college_code', '').strip()
+        email = cleaned_data.get('username', '').strip()
+        password = cleaned_data.get('password')
         self.college = (
-            College.objects.filter(code=code).first()
+            College.objects.filter(code__iexact=code).first()
             if code else None
         )
 
-        return super().clean()
+        if email and password and self.college:
+            candidates = get_user_model().objects.filter(
+                Q(email__iexact=email) | Q(username__iexact=email),
+                is_active=True,
+                is_staff=False,
+                student_profile__college=self.college,
+            ).distinct()
+            self.user_cache = next(
+                (
+                    candidate
+                    for candidate in candidates
+                    if candidate.check_password(password)
+                ),
+                None,
+            )
+
+        if self.user_cache is None:
+            raise forms.ValidationError(
+                self.error_messages['invalid_login'],
+                code='invalid_login',
+            )
+
+        self.user = self.user_cache
+        self.confirm_login_allowed(self.user_cache)
+        return cleaned_data
 
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)

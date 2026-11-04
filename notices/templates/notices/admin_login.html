@@ -1,6 +1,6 @@
 {% extends 'notices/base.html' %}
 
-{% block title %}Administrator login | CampusBoard{% endblock %}
+{% block title %}Administrator login | Campus Notice Board{% endblock %}
 
 {% block content %}
 <section class="login-section">
@@ -24,6 +24,7 @@
             {% endfor %}
             <button class="btn btn-primary btn-lg w-100 mt-2" type="submit">Sign in <i class="bi bi-arrow-right ms-1"></i></button>
         </form>
+        <p class="text-secondary text-center mt-4 mb-0">Have an admin signup code? <a class="text-link" href="{% url 'admin_register' %}">Create an admin account</a></p>
         <a class="back-link d-inline-block mt-4" href="{% url 'home' %}"><i class="bi bi-arrow-left me-1"></i>Back to notice board</a>
     </div>
 </section>

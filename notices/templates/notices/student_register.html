@@ -1,6 +1,6 @@
 {% extends 'notices/base.html' %}
 
-{% block title %}Create student account | CampusBoard{% endblock %}
+{% block title %}Create student account | Campus Notice Board{% endblock %}
 
 {% block content %}
 <section class="login-section">
@@ -8,19 +8,23 @@
         <div class="login-icon"><i class="bi bi-person-vcard"></i></div>
         <span class="eyebrow text-primary">STUDENT / USER PORTAL</span>
         <h1>Create your account</h1>
-        <p class="text-secondary mb-4">Create your student account to access notices for your college and branch.</p>
+        <p class="text-secondary mb-4">Register with your Gmail address, college code and student details to access campus notices.</p>
         <form method="post" action="{% url 'student_register' %}" novalidate>
             {% csrf_token %}
             {% if form.non_field_errors %}
                 <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
             {% endif %}
             {% for field in form %}
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% if field.is_hidden %}
                     {{ field }}
-                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-                </div>
+                {% else %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
             {% endfor %}
             <button class="btn btn-primary btn-lg w-100 mt-2" type="submit">Create account <i class="bi bi-arrow-right ms-1"></i></button>
         </form>
